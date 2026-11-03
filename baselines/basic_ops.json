@@ -1,0 +1,400 @@
+{
+  "command": [
+    "test_programs/basic_ops.out"
+  ],
+  "created": "2026-11-03T21:40:15",
+  "environment": {
+    "LANG": "C",
+    "LC_ALL": "C",
+    "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+  },
+  "features": {
+    "calls.by_name.brk": {
+      "max": 4,
+      "min": 4,
+      "present": 10
+    },
+    "calls.by_name.clone": {
+      "max": 1,
+      "min": 1,
+      "present": 10
+    },
+    "calls.by_name.close": {
+      "max": 13,
+      "min": 13,
+      "present": 10
+    },
+    "calls.by_name.execve": {
+      "max": 2,
+      "min": 2,
+      "present": 10
+    },
+    "calls.by_name.exit_group": {
+      "max": 2,
+      "min": 2,
+      "present": 10
+    },
+    "calls.by_name.faccessat": {
+      "max": 3,
+      "min": 3,
+      "present": 10
+    },
+    "calls.by_name.fcntl": {
+      "max": 3,
+      "min": 3,
+      "present": 10
+    },
+    "calls.by_name.fstat": {
+      "max": 10,
+      "min": 10,
+      "present": 10
+    },
+    "calls.by_name.getrandom": {
+      "max": 2,
+      "min": 2,
+      "present": 10
+    },
+    "calls.by_name.gettid": {
+      "max": 1,
+      "min": 1,
+      "present": 10
+    },
+    "calls.by_name.mmap": {
+      "max": 35,
+      "min": 35,
+      "present": 10
+    },
+    "calls.by_name.mprotect": {
+      "max": 17,
+      "min": 17,
+      "present": 10
+    },
+    "calls.by_name.munmap": {
+      "max": 15,
+      "min": 14,
+      "present": 10
+    },
+    "calls.by_name.openat": {
+      "max": 14,
+      "min": 14,
+      "present": 10
+    },
+    "calls.by_name.ppoll": {
+      "max": 1,
+      "min": 1,
+      "present": 10
+    },
+    "calls.by_name.prctl": {
+      "max": 1,
+      "min": 1,
+      "present": 10
+    },
+    "calls.by_name.prlimit64": {
+      "max": 3,
+      "min": 3,
+      "present": 10
+    },
+    "calls.by_name.read": {
+      "max": 15,
+      "min": 15,
+      "present": 10
+    },
+    "calls.by_name.rseq": {
+      "max": 2,
+      "min": 2,
+      "present": 10
+    },
+    "calls.by_name.rt_sigaction": {
+      "max": 9,
+      "min": 9,
+      "present": 10
+    },
+    "calls.by_name.rt_sigprocmask": {
+      "max": 3,
+      "min": 3,
+      "present": 10
+    },
+    "calls.by_name.sched_getaffinity": {
+      "max": 1,
+      "min": 1,
+      "present": 10
+    },
+    "calls.by_name.set_robust_list": {
+      "max": 3,
+      "min": 3,
+      "present": 10
+    },
+    "calls.by_name.set_tid_address": {
+      "max": 2,
+      "min": 2,
+      "present": 10
+    },
+    "calls.by_name.sigaltstack": {
+      "max": 3,
+      "min": 3,
+      "present": 10
+    },
+    "calls.by_name.statfs": {
+      "max": 2,
+      "min": 2,
+      "present": 10
+    },
+    "calls.by_name.statx": {
+      "max": 4,
+      "min": 4,
+      "present": 10
+    },
+    "calls.by_name.unlinkat": {
+      "max": 1,
+      "min": 1,
+      "present": 10
+    },
+    "calls.by_name.wait4": {
+      "max": 1,
+      "min": 1,
+      "present": 10
+    },
+    "calls.by_name.write": {
+      "max": 6,
+      "min": 6,
+      "present": 10
+    },
+    "calls.total": {
+      "max": 179,
+      "min": 178,
+      "present": 10
+    },
+    "calls.unique": {
+      "max": 30,
+      "min": 30,
+      "present": 10
+    },
+    "categories.file": {
+      "max": 72,
+      "min": 72,
+      "present": 10
+    },
+    "categories.memory": {
+      "max": 71,
+      "min": 70,
+      "present": 10
+    },
+    "categories.network": {
+      "max": 0,
+      "min": 0,
+      "present": 0
+    },
+    "categories.other": {
+      "max": 2,
+      "min": 2,
+      "present": 10
+    },
+    "categories.process": {
+      "max": 19,
+      "min": 19,
+      "present": 10
+    },
+    "categories.signal": {
+      "max": 15,
+      "min": 15,
+      "present": 10
+    },
+    "failures.by_call: faccessat ENOENT": {
+      "max": 3,
+      "min": 3,
+      "present": 10
+    },
+    "failures.by_call: openat ENOENT": {
+      "max": 1,
+      "min": 1,
+      "present": 10
+    },
+    "failures.by_call: statfs ENOENT": {
+      "max": 2,
+      "min": 2,
+      "present": 10
+    },
+    "failures.by_error.ENOENT": {
+      "max": 6,
+      "min": 6,
+      "present": 10
+    },
+    "failures.failed": {
+      "max": 6,
+      "min": 6,
+      "present": 10
+    },
+    "files.by_location.config": {
+      "max": 0,
+      "min": 0,
+      "present": 0
+    },
+    "files.by_location.devices": {
+      "max": 0,
+      "min": 0,
+      "present": 0
+    },
+    "files.by_location.home": {
+      "max": 0,
+      "min": 0,
+      "present": 0
+    },
+    "files.by_location.libraries": {
+      "max": 9,
+      "min": 9,
+      "present": 10
+    },
+    "files.by_location.other": {
+      "max": 0,
+      "min": 0,
+      "present": 0
+    },
+    "files.by_location.proc/sys": {
+      "max": 2,
+      "min": 2,
+      "present": 10
+    },
+    "files.by_location.programs": {
+      "max": 0,
+      "min": 0,
+      "present": 0
+    },
+    "files.by_location.relative": {
+      "max": 0,
+      "min": 0,
+      "present": 0
+    },
+    "files.by_location.temp": {
+      "max": 2,
+      "min": 2,
+      "present": 10
+    },
+    "files.changes: delete /tmp/processx_demo.txt": {
+      "max": 1,
+      "min": 1,
+      "present": 10
+    },
+    "files.failed_opens: ENOENT /usr/share/coreutils/locales/echo/en-US.ftl": {
+      "max": 1,
+      "min": 1,
+      "present": 10
+    },
+    "files.for_write": {
+      "max": 1,
+      "min": 1,
+      "present": 10
+    },
+    "files.opens": {
+      "max": 14,
+      "min": 14,
+      "present": 10
+    },
+    "files.opens_failed": {
+      "max": 1,
+      "min": 1,
+      "present": 10
+    },
+    "files.read_files: /proc/filesystems": {
+      "max": 1,
+      "min": 1,
+      "present": 10
+    },
+    "files.read_files: /proc/self/maps": {
+      "max": 1,
+      "min": 1,
+      "present": 10
+    },
+    "files.read_files: /tmp/processx_demo.txt": {
+      "max": 1,
+      "min": 1,
+      "present": 10
+    },
+    "files.read_only": {
+      "max": 12,
+      "min": 12,
+      "present": 10
+    },
+    "files.with_create": {
+      "max": 1,
+      "min": 1,
+      "present": 10
+    },
+    "files.written: /tmp/processx_demo.txt": {
+      "max": 1,
+      "min": 1,
+      "present": 10
+    },
+    "processes.count": {
+      "max": 2,
+      "min": 2,
+      "present": 10
+    },
+    "processes.created": {
+      "max": 1,
+      "min": 1,
+      "present": 10
+    },
+    "processes.creation_failed": {
+      "max": 0,
+      "min": 0,
+      "present": 0
+    },
+    "processes.exited_badly": {
+      "max": 0,
+      "min": 0,
+      "present": 0
+    },
+    "processes.exited_ok": {
+      "max": 2,
+      "min": 2,
+      "present": 10
+    },
+    "processes.exits.exited with 0": {
+      "max": 2,
+      "min": 2,
+      "present": 10
+    },
+    "processes.no_exit_seen": {
+      "max": 0,
+      "min": 0,
+      "present": 0
+    },
+    "processes.programs./bin/echo": {
+      "max": 1,
+      "min": 1,
+      "present": 10
+    },
+    "processes.programs.test_programs/basic_ops.out": {
+      "max": 1,
+      "min": 1,
+      "present": 10
+    },
+    "processes.signals.SIGCHLD": {
+      "max": 1,
+      "min": 1,
+      "present": 10
+    },
+    "processes.threads_created": {
+      "max": 0,
+      "min": 0,
+      "present": 0
+    }
+  },
+  "identical_runs": 9,
+  "name": "basic_ops",
+  "program": "basic_ops.out",
+  "runs": 10,
+  "schema": 1,
+  "timing": {
+    "elapsed_seconds": {
+      "max": 0.037435,
+      "mean": 0.03292,
+      "min": 0.028188
+    },
+    "total_seconds": {
+      "max": 0.04257,
+      "mean": 0.037165,
+      "min": 0.030326
+    }
+  }
+}
