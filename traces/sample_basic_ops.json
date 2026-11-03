@@ -1,0 +1,169 @@
+{
+  "calls": {
+    "by_name": {
+      "brk": 4,
+      "clone": 1,
+      "close": 13,
+      "execve": 2,
+      "exit_group": 2,
+      "faccessat": 3,
+      "fcntl": 3,
+      "fstat": 10,
+      "getrandom": 2,
+      "gettid": 1,
+      "mmap": 35,
+      "mprotect": 17,
+      "munmap": 15,
+      "openat": 14,
+      "ppoll": 1,
+      "prctl": 1,
+      "prlimit64": 3,
+      "read": 15,
+      "rseq": 2,
+      "rt_sigaction": 9,
+      "rt_sigprocmask": 3,
+      "sched_getaffinity": 1,
+      "set_robust_list": 3,
+      "set_tid_address": 2,
+      "sigaltstack": 3,
+      "statfs": 2,
+      "statx": 4,
+      "unlinkat": 1,
+      "wait4": 1,
+      "write": 6
+    },
+    "total": 179,
+    "unique": 30
+  },
+  "categories": {
+    "file": 72,
+    "memory": 71,
+    "network": 0,
+    "other": 2,
+    "process": 19,
+    "signal": 15
+  },
+  "command": "./test_programs/basic_ops.out",
+  "failures": {
+    "by_call": [
+      {
+        "call": "faccessat",
+        "count": 3,
+        "error": "ENOENT"
+      },
+      {
+        "call": "statfs",
+        "count": 2,
+        "error": "ENOENT"
+      },
+      {
+        "call": "openat",
+        "count": 1,
+        "error": "ENOENT"
+      }
+    ],
+    "by_error": {
+      "ENOENT": 6
+    },
+    "failed": 6,
+    "rate": 0.03352
+  },
+  "files": {
+    "by_location": {
+      "config": 0,
+      "devices": 0,
+      "home": 0,
+      "libraries": 9,
+      "other": 0,
+      "proc/sys": 2,
+      "programs": 0,
+      "relative": 0,
+      "temp": 2
+    },
+    "changes": [
+      {
+        "action": "delete",
+        "error": null,
+        "path": "/tmp/processx_demo.txt"
+      }
+    ],
+    "failed_opens": [
+      {
+        "count": 1,
+        "error": "ENOENT",
+        "path": "/usr/share/coreutils/locales/echo/en-US.ftl"
+      }
+    ],
+    "for_write": 1,
+    "opens": 14,
+    "opens_failed": 1,
+    "read_files": [
+      "/proc/filesystems",
+      "/proc/self/maps",
+      "/tmp/processx_demo.txt"
+    ],
+    "read_only": 12,
+    "with_create": 1,
+    "written": [
+      "/tmp/processx_demo.txt"
+    ]
+  },
+  "processes": {
+    "count": 2,
+    "created": 1,
+    "creation_failed": 0,
+    "exited_badly": 0,
+    "exited_ok": 2,
+    "exits": {
+      "exited with 0": 2
+    },
+    "failed_execs": [],
+    "no_exit_seen": 0,
+    "programs": {
+      "./test_programs/basic_ops.out": 1,
+      "/bin/echo": 1
+    },
+    "signals": {
+      "SIGCHLD": 1
+    },
+    "threads_created": 0
+  },
+  "program": "basic_ops.out",
+  "schema": 1,
+  "timing": {
+    "by_category": {
+      "file": 0.005392,
+      "memory": 0.005869,
+      "network": 0.0,
+      "other": 0.0002,
+      "process": 0.023727,
+      "signal": 0.000977
+    },
+    "elapsed_seconds": 0.032442,
+    "slowest": [
+      {
+        "call": "wait4",
+        "seconds": 0.021006
+      },
+      {
+        "call": "execve",
+        "seconds": 0.00134
+      },
+      {
+        "call": "execve",
+        "seconds": 0.000354
+      },
+      {
+        "call": "clone",
+        "seconds": 0.000307
+      },
+      {
+        "call": "openat",
+        "seconds": 0.000277
+      }
+    ],
+    "timed_calls": 177,
+    "total_seconds": 0.036165
+  },
+  "trace": "sample_basic_ops.trace"
+}

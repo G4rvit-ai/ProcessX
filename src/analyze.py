@@ -8,7 +8,7 @@ Usage:
   python3 src/analyze.py show [--all] <trace file>
 
   run    trace the program with strace, save the trace in traces/runs/,
-         then analyze it
+         analyze it, and save its feature record (JSON) next to the trace
   show   analyze a trace file you already have
   --all  list every system call instead of the 10 most frequent
 """
@@ -21,6 +21,7 @@ import sys
 from collections import Counter
 from datetime import datetime
 
+from feature_record import build_record, save_record
 from trace_parser import parse_trace
 from trace_stats import compute_stats
 
@@ -159,6 +160,10 @@ def main():
     if result is not None:
         print_program_output(result)
     print_report(trace_path, trace, stats, show_all)
+    if mode == "run":
+        record_path = os.path.splitext(trace_path)[0] + ".json"
+        save_record(build_record(trace, trace_path), record_path)
+        print(f" Feature record: {os.path.relpath(record_path)}")
     return 0
 
 
