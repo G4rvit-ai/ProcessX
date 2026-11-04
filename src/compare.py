@@ -2,7 +2,7 @@
 
 Phase 3, step 2: run a program once, in the same fixed environment the baseline
 used, and compare every feature of that run with the range the baseline saw.
-Anything outside the range is listed in plain words.
+Anything outside the range is listed in plain words and turned into a simple score.
 
 Usage:
   python3 src/compare.py <baseline> [program [arguments...]]
@@ -25,9 +25,9 @@ from baseline import find_baseline, label, load_baseline
 from feature_record import load_record
 from file_features import section
 from runner import controlled_env, make_run_dir, record_run, shown_environment
+from score import ABOVE, BELOW, MISSING, NEVER, print_score, score_run
 from stability import JUDGED, flatten
 
-NEVER, ABOVE, BELOW, MISSING = "never", "above", "below", "missing"
 ORDER = (NEVER, ABOVE, BELOW, MISSING)
 TITLES = {
     NEVER: "NEVER SEEN IN THE BASELINE",
@@ -194,6 +194,7 @@ def print_comparison(checked, deviations, runs):
     print(f"  inside baseline range:  {checked - len(deviations)}")
     print(f"  outside it:             {len(deviations)}   (never seen {counts[NEVER]}, more {counts[ABOVE]}, "
           f"less {counts[BELOW]}, missing {counts[MISSING]})")
+    print_score(score_run(deviations))
     for kind in ORDER:
         rows = [explain(d) for d in deviations if d.kind == kind]
         if rows:
