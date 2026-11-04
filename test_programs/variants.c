@@ -1,7 +1,7 @@
-/* variants.c - a test program with a normal mode and five deliberately odd modes.
+/* variants.c - a test program with a normal mode and six deliberately odd modes.
  *
  * Build:  gcc -Wall -Wextra -o test_programs/variants.out test_programs/variants.c
- * Run:    test_programs/variants.out [secret|homewrite|spawn|net|crash]
+ * Run:    test_programs/variants.out [secret|homewrite|spawn|net|local|crash]
  *
  * Normal (no argument): write a file in /tmp, read it back, delete it, and run /bin/echo.
  *
@@ -11,6 +11,8 @@
  *   homewrite  write a file in your home folder, then delete it again
  *   spawn      start three programs the normal mode never starts (date, uname, true)
  *   net        open a network connection to 127.0.0.1 port 9 (this computer only; nothing listens there)
+ *   local      open a local socket and try to connect it to a socket file that does not exist
+ *              (a program talking to another program on this computer: not the network)
  *   crash      crash with a segmentation fault (core files are switched off first)
  */
 #include <arpa/inet.h>
@@ -20,6 +22,7 @@
 #include <string.h>
 #include <sys/resource.h>
 #include <sys/socket.h>
+#include <sys/un.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
@@ -55,8 +58,8 @@ static void write_and_delete(const char *path) {
 int main(int argc, char **argv) {
     const char *mode = argc > 1 ? argv[1] : "normal";
     if (strcmp(mode, "normal") && strcmp(mode, "secret") && strcmp(mode, "homewrite") &&
-        strcmp(mode, "spawn") && strcmp(mode, "net") && strcmp(mode, "crash")) {
-        fprintf(stderr, "usage: %s [secret|homewrite|spawn|net|crash]\n", argv[0]);
+        strcmp(mode, "spawn") && strcmp(mode, "net") && strcmp(mode, "local") && strcmp(mode, "crash")) {
+        fprintf(stderr, "usage: %s [secret|homewrite|spawn|net|local|crash]\n", argv[0]);
         return 2;
     }
 
@@ -85,6 +88,14 @@ int main(int argc, char **argv) {
         addr.sin_port = htons(9);
         inet_pton(AF_INET, "127.0.0.1", &addr.sin_addr);
         connect(s, (struct sockaddr *)&addr, sizeof addr);
+        close(s);
+    } else if (!strcmp(mode, "local")) {
+        int s = socket(AF_UNIX, SOCK_STREAM, 0);
+        struct sockaddr_un addr;
+        memset(&addr, 0, sizeof addr);
+        addr.sun_family = AF_UNIX;
+        strcpy(addr.sun_path, "/tmp/processx_no_such_socket");
+        connect(s, (struct sockaddr *)&addr, sizeof addr);      /* fails: there is no such socket file */
         close(s);
     } else if (!strcmp(mode, "crash")) {
         struct rlimit no_core = {0, 0};

@@ -3,7 +3,8 @@
 #
 #   10 normal runs of test_programs/variants.c -> a baseline
 #   normal runs must NOT raise an alarm; each of five odd modes must score clearly
-#   above normal, show its own finding, and leave evidence in the raw strace trace.
+#   above normal, show its own finding, and leave evidence in the raw strace trace;
+#   the sixth mode (a local socket, not the network) must NOT be reported as network use.
 #
 # Usage:  bash check_variants.sh
 # The evidence is found with grep on the raw trace, so Python never grades its own homework.
@@ -34,7 +35,7 @@ at_most() {
 summary() {
     echo
     if [ "$FAILED" -eq 0 ]; then
-        echo "ALL $PASSED CHECKS PASSED: every odd variant scores clearly above normal, and normal runs stay quiet."
+        echo "ALL $PASSED CHECKS PASSED: odd variants score clearly above normal, normal runs stay quiet, and a local socket is not mistaken for the network."
     else
         echo "$FAILED of $((PASSED + FAILED)) CHECKS FAILED. Read the FAIL lines above."
     fi
@@ -72,6 +73,17 @@ evidence() {
     n=$(grep -cE -- "$2" "$TRACE" 2>/dev/null)
     at_least "$MODE: the raw trace shows $1" "${n:-0}" 1
 }
+# sockets_match     the socket counts in the saved record must equal what grep finds in the raw trace
+SOCKETS='^[0-9]+ +[0-9:.]+ (socket|socketpair)\('
+sockets_match() {
+    local rec="${TRACE%.trace}.json" internet local_n total
+    internet=$(grep -cE "${SOCKETS}AF_(INET6?|PACKET)," "$TRACE")
+    local_n=$(grep -cE "${SOCKETS}AF_UNIX," "$TRACE")
+    total=$(grep -cE "$SOCKETS" "$TRACE")
+    expect "$MODE: the record counts sockets (internet, local, other) the way grep does" \
+        "$(python3 -c 'import json, sys; s = json.load(open(sys.argv[1]))["calls"]["sockets"]; print(s["internet"], s["local"], s["other"])' "$rec" 2>&1)" \
+        "$internet $local_n $((total - internet - local_n))"
+}
 
 echo "0. Tools"
 for tool in gcc strace python3; do
@@ -95,7 +107,7 @@ if [ ! -f test_programs/variants.c ]; then
 fi
 expect "variants.c compiles without a single warning" "$(gcc -Wall -Wextra -o "$PROG" test_programs/variants.c 2>&1)" ""
 expect "normal mode exits 0" "$("$PROG" >/dev/null 2>&1; echo $?)" 0
-for mode in secret homewrite spawn net; do
+for mode in secret homewrite spawn net local; do
     expect "$mode mode exits 0" "$("$PROG" "$mode" >/dev/null 2>&1; echo $?)" 0
 done
 expect "crash mode dies with a segmentation fault (exit 139)" "$( { "$PROG" crash >/dev/null 2>&1; echo $?; } 2>/dev/null )" 139
@@ -120,6 +132,10 @@ done
 ROWS="$ROWS$(printf '  %-10s %5s   %s' "normal" "$(score_of "$WORK/normal1.txt")" "$(level_of "$WORK/normal1.txt")")"$'\n'
 expect "a normal run starts exactly 2 programs (variants.out and /bin/echo)" \
     "$(grep -cE '^[0-9]+ +[0-9:.]+ execve\(' "$(trace_of "$WORK/normal1.txt")")" 2
+MODE=normal
+TRACE=$(trace_of "$WORK/normal1.txt")
+sockets_match
+expect "a normal run creates no socket at all" "$(grep -cE "$SOCKETS" "$TRACE")" 0
 
 echo
 echo "4. secret: reads /etc/passwd"
@@ -166,9 +182,25 @@ no_finding "killed by"
 no_finding "sensitive file"
 evidence "an internet socket being created" 'socket\(AF_INET,'
 evidence "a connection to port 9" 'connect\(.*htons\(9\)'
+sockets_match
+expect "net: exactly 1 internet socket was created" "$(grep -cE "${SOCKETS}AF_INET," "$TRACE")" 1
 
 echo
-echo "8. crash: dies with a segmentation fault"
+echo "8. local: a local socket (to a program on this computer), which is not the network"
+run_mode local
+at_most "local: the score stays low" "$SCORE" 5
+no_finding "used the network"
+no_finding "started /"
+no_finding "killed by"
+no_finding "sensitive file"
+evidence "a local socket being created" 'socket\(AF_UNIX,'
+evidence "the connect failing: no such socket file" 'connect\(.*processx_no_such_socket.*ENOENT'
+expect "local: the raw trace has no internet socket" "$(grep -cE "${SOCKETS}AF_(INET6?|PACKET)," "$TRACE")" 0
+sockets_match
+expect "local: exactly 1 local socket was created" "$(grep -cE "${SOCKETS}AF_UNIX," "$TRACE")" 1
+
+echo
+echo "9. crash: dies with a segmentation fault"
 run_mode crash
 at_least "crash: the score is clearly above normal" "$SCORE" 10
 finding "killed by SIGSEGV"
@@ -178,16 +210,13 @@ no_finding "sensitive file"
 evidence "the process being killed by SIGSEGV" '\+\+\+ killed by SIGSEGV'
 
 echo
-echo "9. Nothing was left behind"
+echo "10. Nothing was left behind"
 expect "no file is left in /tmp or your home folder after the odd runs" \
     "$(ls /tmp/processx_variants.txt "$HOME/processx_variant.txt" 2>/dev/null | wc -l | tr -d ' ')" 0
 
 echo
-echo "Scores (normal stays at 2 or less; every odd mode has to be clearly above that):"
+echo "Scores (normal stays at 2 or less; the odd modes score clearly above that, except local, which is not the network):"
 printf '%s' "$ROWS"
-echo
-echo "Known limit: any socket counts as \"network\", also a local one. A program that looks up user"
-echo "names (such as whoami) can therefore score 10 for \"using the network\". This is not tested here."
 
 summary
 [ "$FAILED" -eq 0 ]

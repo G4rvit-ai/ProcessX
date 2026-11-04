@@ -12,7 +12,7 @@ import sys
 from collections import Counter
 
 from failure_timing import failure_timing
-from features import category_counts
+from features import category_counts, socket_kinds
 from file_features import file_features, succeeded
 from process_features import EXEC_CALLS, describe_exec, process_features
 from trace_parser import parse_trace, short
@@ -61,6 +61,7 @@ def build_record(trace, trace_path=None):
             "total": stats.total,
             "unique": stats.unique,
             "by_name": dict(stats.counts),
+            "sockets": socket_kinds(trace),
         },
         "categories": dict(categories),
         "files": {

@@ -2,7 +2,7 @@
   "command": [
     "test_programs/variants.out"
   ],
-  "created": "2026-11-04T09:35:41",
+  "created": "2026-11-04T22:44:38",
   "environment": {
     "LANG": "C",
     "LC_ALL": "C",
@@ -58,11 +58,6 @@
       "max": 1,
       "min": 1,
       "present": 10
-    },
-    "calls.by_name.madvise": {
-      "max": 1,
-      "min": 0,
-      "present": 4
     },
     "calls.by_name.mmap": {
       "max": 35,
@@ -164,13 +159,28 @@
       "min": 2,
       "present": 10
     },
+    "calls.sockets.internet": {
+      "max": 0,
+      "min": 0,
+      "present": 0
+    },
+    "calls.sockets.local": {
+      "max": 0,
+      "min": 0,
+      "present": 0
+    },
+    "calls.sockets.other": {
+      "max": 0,
+      "min": 0,
+      "present": 0
+    },
     "calls.total": {
-      "max": 180,
-      "min": 179,
+      "max": 179,
+      "min": 178,
       "present": 10
     },
     "calls.unique": {
-      "max": 31,
+      "max": 30,
       "min": 30,
       "present": 10
     },
@@ -180,8 +190,8 @@
       "present": 10
     },
     "categories.memory": {
-      "max": 74,
-      "min": 73,
+      "max": 73,
+      "min": 72,
       "present": 10
     },
     "categories.network": {
@@ -385,21 +395,21 @@
       "present": 0
     }
   },
-  "identical_runs": 6,
+  "identical_runs": 9,
   "name": "variants",
   "program": "variants.out",
   "runs": 10,
   "schema": 1,
   "timing": {
     "elapsed_seconds": {
-      "max": 0.031032,
-      "mean": 0.027931,
-      "min": 0.026152
+      "max": 0.032785,
+      "mean": 0.028774,
+      "min": 0.020756
     },
     "total_seconds": {
-      "max": 0.0374,
-      "mean": 0.032984,
-      "min": 0.03054
+      "max": 0.038852,
+      "mean": 0.033727,
+      "min": 0.02439
     }
   }
 }

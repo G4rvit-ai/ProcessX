@@ -5,6 +5,7 @@ Step 1: group system calls into categories (file, process, memory, ...).
 Usage:  python3 src/features.py traces/sample_basic_ops.trace
 """
 import os
+import re
 import sys
 from collections import Counter
 
@@ -83,6 +84,38 @@ def category_counts(trace):
         if cat == "other":
             others[call.name] += 1
     return counts, others
+
+
+# Which kind of socket is it? The first argument of socket() says. Talking to other computers
+# (IPv4, IPv6, raw packets) is very different from talking to another program on this computer.
+INTERNET_FAMILIES = {"INET", "INET6", "PACKET"}
+LOCAL_FAMILIES = {"UNIX", "LOCAL"}
+SOCKET_KINDS = ("internet", "local", "other")
+FAMILY_RE = re.compile(r"^\s*(?:AF|PF)_([A-Z0-9_]+)")     # older strace versions print PF_ instead of AF_
+
+
+def socket_kind(args):
+    """The kind of socket a socket() call makes, from its arguments: "internet", "local" or "other"."""
+    found = FAMILY_RE.match(args)
+    family = found.group(1) if found else None
+    if family in INTERNET_FAMILIES:
+        return "internet"
+    if family in LOCAL_FAMILIES:
+        return "local"
+    return "other"
+
+
+def socket_kinds(trace):
+    """Count the sockets a run created, by kind. Every kind is in the result (zero if there were none).
+
+    Calls that failed count too: a program that tried to open an internet socket
+    tried to use the network. A socketpair() call counts once.
+    """
+    counts = {kind: 0 for kind in SOCKET_KINDS}
+    for call in trace.syscalls:
+        if call.name in ("socket", "socketpair"):
+            counts[socket_kind(call.args)] += 1
+    return counts
 
 
 if __name__ == "__main__":

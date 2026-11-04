@@ -81,6 +81,7 @@ NOUNS = {
 }
 NOUN_PREFIXES = [
     ("calls.by_name.", "'{}' calls"),
+    ("calls.sockets.", "{} sockets"),
     ("categories.", "calls in the '{}' category"),
     ("files.by_location.", "file opens in '{}'"),
     ("failures.by_error.", "{} errors"),

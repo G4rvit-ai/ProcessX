@@ -44,7 +44,8 @@ WRITE_POINTS = {"config": 10, "programs": 10, "libraries": 8, "home": 6, "proc/s
 # Starting a program the baseline never started. From a temp or home folder is worse.
 PROGRAM_POINTS, PROGRAM_FROM_TEMP_OR_HOME = 4, 10
 
-# Using the network when the baseline never did.
+# Opening an internet socket (to other computers) when the baseline never did.
+# A local socket (to another program on this computer) is not "the network" and is only a new system call.
 NETWORK_POINTS = 10
 
 # Powerful system calls: worth points the first time they appear.
@@ -199,7 +200,7 @@ def volume_finding(d):
 def score_run(deviations):
     """Score the differences found by compare_features. Returns a Score."""
     findings, new_calls, missing, scored = [], [], [], 0
-    network_is_new = any(d.feature == "categories.network" and d.kind == NEVER for d in deviations)
+    network_is_new = any(d.feature == "calls.sockets.internet" and d.kind == NEVER for d in deviations)
     killed_by = {d.feature.rsplit(" ", 1)[-1] for d in deviations
                  if d.kind == NEVER and d.feature.startswith("processes.exits.killed by ")}
 
@@ -207,15 +208,15 @@ def score_run(deviations):
         f = d.feature
         finding = None
         if d.kind == NEVER:
-            if f == "categories.network":
-                finding = Finding(NETWORK_POINTS, f"used the network ({d.value} network call{'s' if d.value != 1 else ''})")
+            if f == "calls.sockets.internet":
+                finding = Finding(NETWORK_POINTS, f"used the network ({d.value} internet socket{'s' if d.value != 1 else ''})")
             elif f.startswith("processes.signals.") and f.rsplit(".", 1)[-1] in killed_by:
                 pass                                 # the crash is already counted
             elif f.startswith("calls.by_name."):
                 name = f[len("calls.by_name."):]
                 if name in RISKY_CALLS:
                     finding = Finding(RISKY_CALL_POINTS, f"used a powerful system call: {name}")
-                elif not (network_is_new and category_of(name) == "network"):   # already counted as "network"
+                elif not (network_is_new and category_of(name) == "network"):   # socket, connect... are already counted as "used the network"
                     new_calls.append(name)
                     scored += 1
             else:
