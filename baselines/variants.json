@@ -2,7 +2,7 @@
   "command": [
     "test_programs/variants.out"
   ],
-  "created": "2026-11-04T22:44:38",
+  "created": "2026-11-06T04:44:44",
   "environment": {
     "LANG": "C",
     "LC_ALL": "C",
@@ -59,6 +59,11 @@
       "min": 1,
       "present": 10
     },
+    "calls.by_name.madvise": {
+      "max": 1,
+      "min": 0,
+      "present": 2
+    },
     "calls.by_name.mmap": {
       "max": 35,
       "min": 35,
@@ -71,7 +76,7 @@
     },
     "calls.by_name.munmap": {
       "max": 15,
-      "min": 14,
+      "min": 15,
       "present": 10
     },
     "calls.by_name.openat": {
@@ -175,12 +180,12 @@
       "present": 0
     },
     "calls.total": {
-      "max": 179,
-      "min": 178,
+      "max": 180,
+      "min": 179,
       "present": 10
     },
     "calls.unique": {
-      "max": 30,
+      "max": 31,
       "min": 30,
       "present": 10
     },
@@ -190,8 +195,8 @@
       "present": 10
     },
     "categories.memory": {
-      "max": 73,
-      "min": 72,
+      "max": 74,
+      "min": 73,
       "present": 10
     },
     "categories.network": {
@@ -395,21 +400,21 @@
       "present": 0
     }
   },
-  "identical_runs": 9,
+  "identical_runs": 8,
   "name": "variants",
   "program": "variants.out",
   "runs": 10,
   "schema": 1,
   "timing": {
     "elapsed_seconds": {
-      "max": 0.032785,
-      "mean": 0.028774,
-      "min": 0.020756
+      "max": 0.034068,
+      "mean": 0.02866,
+      "min": 0.021197
     },
     "total_seconds": {
-      "max": 0.038852,
-      "mean": 0.033727,
-      "min": 0.02439
+      "max": 0.03886,
+      "mean": 0.033916,
+      "min": 0.024682
     }
   }
 }
