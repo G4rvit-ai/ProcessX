@@ -8,10 +8,12 @@ An unusual run is a reason to look closer, not proof of malware. This is not an 
 - Phase 1 done: run a program, capture its system calls, parse them, print statistics.
 - Phase 2 done: turn every run into a feature record (JSON) and measure how repeatable the features are.
 - Phase 3 done: a baseline of normal behavior, a comparison against it, and a simple, explainable score.
-- Next: Phase 4, a backend (FastAPI) and a database to keep runs, baselines and scores.
+- Phase 4 in progress: a backend (FastAPI). Step 1 done: the server runs and answers /health.
+- Next: more backend endpoints, then a database for runs, baselines and scores.
 
 ## Requirements
-Linux, strace, gcc and Python 3.10 or newer. No extra Python packages are needed yet.
+Linux, strace, gcc and Python 3.10 or newer. Phases 1 to 3 need no extra Python packages.
+The backend (Phase 4) needs the packages in requirements.txt: `pip install -r requirements.txt`.
 
 ## Try it
 
@@ -56,12 +58,24 @@ Plain counts (more `openat` calls, more processes) add nothing, except the total
 system calls compared with the baseline's busiest run.
 Local sockets (a program talking to another program on this computer) are not "the network".
 
+## Backend (Phase 4)
+
+    pip install -r requirements.txt          # once, with the virtual environment active
+    uvicorn backend.main:app --reload        # from the project folder; stop it with Ctrl+C
+
+Then open http://127.0.0.1:8000/health (the data) or http://127.0.0.1:8000/docs (every endpoint,
+with a Try it button). The server only listens on this computer (127.0.0.1).
+
+- `GET /health`: `{"status": "ok", "strace": true, "baselines": 4}`: alive, is strace installed,
+  how many baselines are saved in `baselines/`.
+
 ## Checks
 
     bash check_phase1.sh
     bash check_phase2.sh
     bash check_variants.sh     # six deliberately odd behaviors against a baseline
     bash check_phase3.sh       # all of Phase 3, using grep and awk on the raw traces; runs the others too
+    bash check_phase4.sh       # starts the real backend, checks it with curl; runs check_phase3.sh too
 
 ## What is in a feature record
 Call counts, call categories (file, process, memory, network, signal), how many sockets were
@@ -86,4 +100,5 @@ work; rebuild one (same `build` command) to get the split.
   - Phase 2: `features.py` (categories, socket kinds), `file_features.py`, `process_features.py`,
     `failure_timing.py`, `feature_record.py` (one JSON record per run), `stability.py`
   - Phase 3: `runner.py` (fixed-environment runs), `baseline.py`, `compare.py`, `score.py`
-- `check_phase1.sh`, `check_phase2.sh`, `check_variants.sh`, `check_phase3.sh`: end-to-end checks
+- `backend/`: the web server (`main.py`); `requirements.txt` lists its packages
+- `check_phase1.sh`, `check_phase2.sh`, `check_variants.sh`, `check_phase3.sh`, `check_phase4.sh`: end-to-end checks
