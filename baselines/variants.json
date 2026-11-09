@@ -2,7 +2,7 @@
   "command": [
     "test_programs/variants.out"
   ],
-  "created": "2026-11-09T19:50:45",
+  "created": "2026-11-09T19:54:15",
   "environment": {
     "LANG": "C",
     "LC_ALL": "C",
@@ -58,6 +58,11 @@
       "max": 1,
       "min": 1,
       "present": 10
+    },
+    "calls.by_name.madvise": {
+      "max": 1,
+      "min": 0,
+      "present": 2
     },
     "calls.by_name.mmap": {
       "max": 35,
@@ -175,12 +180,12 @@
       "present": 0
     },
     "calls.total": {
-      "max": 179,
+      "max": 180,
       "min": 178,
       "present": 10
     },
     "calls.unique": {
-      "max": 30,
+      "max": 31,
       "min": 30,
       "present": 10
     },
@@ -190,7 +195,7 @@
       "present": 10
     },
     "categories.memory": {
-      "max": 73,
+      "max": 74,
       "min": 72,
       "present": 10
     },
@@ -395,21 +400,21 @@
       "present": 0
     }
   },
-  "identical_runs": 9,
+  "identical_runs": 7,
   "name": "variants",
   "program": "variants.out",
   "runs": 10,
   "schema": 1,
   "timing": {
     "elapsed_seconds": {
-      "max": 0.074221,
-      "mean": 0.035232,
-      "min": 0.027248
+      "max": 0.067345,
+      "mean": 0.034664,
+      "min": 0.028166
     },
     "total_seconds": {
-      "max": 0.092552,
-      "mean": 0.041277,
-      "min": 0.032421
+      "max": 0.078993,
+      "mean": 0.040484,
+      "min": 0.032069
     }
   }
 }
