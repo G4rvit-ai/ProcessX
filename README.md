@@ -8,7 +8,7 @@ An unusual run is a reason to look closer, not proof of malware. This is not an 
 - Phase 1 done: run a program, capture its system calls, parse them, print statistics.
 - Phase 2 done: turn every run into a feature record (JSON) and measure how repeatable the features are.
 - Phase 3 done: a baseline of normal behavior, a comparison against it, and a simple, explainable score.
-- Phase 4 in progress: a backend (FastAPI). Step 1 done: the server runs and answers /health.
+- Phase 4 in progress: a backend (FastAPI). Steps 1-2 done: it answers /health and shows the saved baselines.
 - Next: more backend endpoints, then a database for runs, baselines and scores.
 
 ## Requirements
@@ -68,6 +68,11 @@ with a Try it button). The server only listens on this computer (127.0.0.1).
 
 - `GET /health`: `{"status": "ok", "strace": true, "baselines": 4}`: alive, is strace installed,
   how many baselines are saved in `baselines/`.
+- `GET /baselines`: every usable baseline in short (name, program, command, runs, number of features),
+  and a list of the files in `baselines/` that cannot be used, with the reason.
+- `GET /baselines/<name>`: one baseline in full: for every feature, the lowest and highest value seen
+  in its normal runs. Unknown name: 404. Unusable file: 500 with the reason. Read-only: nothing can be
+  changed over HTTP.
 
 ## Checks
 
@@ -100,5 +105,6 @@ work; rebuild one (same `build` command) to get the split.
   - Phase 2: `features.py` (categories, socket kinds), `file_features.py`, `process_features.py`,
     `failure_timing.py`, `feature_record.py` (one JSON record per run), `stability.py`
   - Phase 3: `runner.py` (fixed-environment runs), `baseline.py`, `compare.py`, `score.py`
-- `backend/`: the web server (`main.py`); `requirements.txt` lists its packages
+- `backend/`: the web server (`main.py`: the endpoints; `store.py`: where the data comes from);
+  `requirements.txt` lists its packages
 - `check_phase1.sh`, `check_phase2.sh`, `check_variants.sh`, `check_phase3.sh`, `check_phase4.sh`: end-to-end checks
