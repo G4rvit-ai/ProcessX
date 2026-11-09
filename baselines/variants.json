@@ -2,7 +2,7 @@
   "command": [
     "test_programs/variants.out"
   ],
-  "created": "2026-11-09T19:54:15",
+  "created": "2026-11-09T19:55:08",
   "environment": {
     "LANG": "C",
     "LC_ALL": "C",
@@ -62,7 +62,7 @@
     "calls.by_name.madvise": {
       "max": 1,
       "min": 0,
-      "present": 2
+      "present": 3
     },
     "calls.by_name.mmap": {
       "max": 35,
@@ -76,7 +76,7 @@
     },
     "calls.by_name.munmap": {
       "max": 15,
-      "min": 14,
+      "min": 15,
       "present": 10
     },
     "calls.by_name.openat": {
@@ -181,7 +181,7 @@
     },
     "calls.total": {
       "max": 180,
-      "min": 178,
+      "min": 179,
       "present": 10
     },
     "calls.unique": {
@@ -196,7 +196,7 @@
     },
     "categories.memory": {
       "max": 74,
-      "min": 72,
+      "min": 73,
       "present": 10
     },
     "categories.network": {
@@ -407,14 +407,14 @@
   "schema": 1,
   "timing": {
     "elapsed_seconds": {
-      "max": 0.067345,
-      "mean": 0.034664,
-      "min": 0.028166
+      "max": 0.032269,
+      "mean": 0.028942,
+      "min": 0.020901
     },
     "total_seconds": {
-      "max": 0.078993,
-      "mean": 0.040484,
-      "min": 0.032069
+      "max": 0.038571,
+      "mean": 0.034337,
+      "min": 0.024691
     }
   }
 }
