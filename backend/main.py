@@ -2,6 +2,7 @@
 
 A small web server that other programs (soon: the dashboard) can talk to over HTTP.
 Step 1: /health.  Step 2: /baselines and /baselines/<name>.  Step 3: POST /baselines/<name>/compare.
+Step 4: every comparison is saved in a database (backend/db.py), and the answer carries its id.
 
 Run it from the project folder (~/processx):
     uvicorn backend.main:app --reload
@@ -9,13 +10,22 @@ Run it from the project folder (~/processx):
 Then open http://127.0.0.1:8000/docs (a page that lists every endpoint and lets you try them).
 """
 import shutil
+from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI, HTTPException, Request
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
-from backend import runs, store
+from backend import db, runs, store
 
-app = FastAPI(title="ProcessX", version="0.3.0",
+
+@asynccontextmanager
+async def lifespan(app):
+    """What happens when the server starts (before the yield) and when it stops (after it)."""
+    db.create_tables()      # makes the missing tables; if the database cannot be opened, the server stops here and says why
+    yield
+
+
+app = FastAPI(title="ProcessX", version="0.4.0", lifespan=lifespan,
               description="System call behavior analyzer: baselines, comparisons and scores.")
 
 # Only requests addressed to this computer are answered. A request for any other name (a web page that tricks
@@ -81,9 +91,10 @@ def compare_baseline(name: str):
 
     Only the saved command is ever run; nothing in the request can change it. One comparison at a time.
     A request that another web page made your browser send is refused (403).
+    The comparison is saved in the database; "id" is its number there (null if it could not be saved).
     """
     try:
-        return runs.compare_baseline(name)
+        result = runs.compare_baseline(name)
     except store.NotFound:
         raise not_found(name) from None
     except store.Unreadable as problem:
@@ -92,3 +103,7 @@ def compare_baseline(name: str):
         raise HTTPException(status_code=409, detail="Another comparison is already running. Try again in a moment.") from None
     except runs.RunFailed as failed:
         raise HTTPException(status_code=failed.status, detail=f"Could not run baseline '{shorten(name)}': {failed}") from None
+    result["id"] = db.save_comparison(result)
+    if result["id"] is None:
+        result["warnings"].append("This comparison could not be saved in the database (the server's terminal says why).")
+    return result

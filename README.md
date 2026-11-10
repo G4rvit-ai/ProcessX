@@ -8,9 +8,9 @@ An unusual run is a reason to look closer, not proof of malware. This is not an 
 - Phase 1 done: run a program, capture its system calls, parse them, print statistics.
 - Phase 2 done: turn every run into a feature record (JSON) and measure how repeatable the features are.
 - Phase 3 done: a baseline of normal behavior, a comparison against it, and a simple, explainable score.
-- Phase 4 in progress: a backend (FastAPI). Steps 1-3 done: it answers /health, shows the saved baselines
-  and can run a comparison.
-- Next: a database for runs, baselines and scores, then a dashboard.
+- Phase 4 in progress: a backend (FastAPI) with a database. Steps 1-4 done: it answers /health, shows the
+  saved baselines, runs a comparison and saves it.
+- Next: endpoints that list the saved comparisons (the history), then a dashboard.
 
 ## Requirements
 Linux, strace, gcc and Python 3.10 or newer. Phases 1 to 3 need no extra Python packages.
@@ -77,10 +77,23 @@ busy, so talk to it from a browser or from a second terminal (curl).
   changed over HTTP.
 - `POST /baselines/<name>/compare`: runs the program saved in that baseline once, in the same fixed
   environment, and answers with the score, the level, every point with its reason, and every feature
-  that left the baseline's range. The run is saved in `traces/runs/`. Only the saved command is ever
-  run, never one from the request; one comparison at a time (409 if one is running); a request that
-  another web page made your browser send is refused (403).
+  that left the baseline's range. The run is saved in `traces/runs/`, and the comparison in the
+  database (the answer's `id` is its number there; `null` if it could not be saved). Only the saved
+  command is ever run, never one from the request; one comparison at a time (409 if one is running);
+  a request that another web page made your browser send is refused (403).
   Try it from a second terminal: `curl -X POST http://127.0.0.1:8000/baselines/demo/compare`
+
+### Database
+Every comparison is saved in `processx.db`: one SQLite file in the project folder (not committed).
+Its table `comparisons` has the columns `id`, `created_at` (UTC), `baseline_name`, `run`, `score`,
+`level`, `matches`, `features_compared`, `outside_range` and `result` (the whole answer, as JSON).
+To look inside:
+
+    python3 -c "import sqlite3; [print(r) for r in sqlite3.connect('processx.db').execute('select id, created_at, baseline_name, score, level from comparisons')]"
+
+The environment variable `PROCESSX_DATABASE_URL` picks another database (for SQLite, use a full path:
+`sqlite:////full/path/x.db`). The tables are made when the server starts; a database that already
+exists is left alone, so if a column ever changes, delete `processx.db` (or use a migration tool).
 
 ## Checks
 
@@ -116,6 +129,7 @@ baselines and start the server from a normal terminal, not from a script.
   - Phase 2: `features.py` (categories, socket kinds), `file_features.py`, `process_features.py`,
     `failure_timing.py`, `feature_record.py` (one JSON record per run), `stability.py`
   - Phase 3: `runner.py` (fixed-environment runs), `baseline.py`, `compare.py`, `score.py`
-- `backend/`: the web server (`main.py`: the endpoints; `store.py`: where the data comes from;
-  `runs.py`: runs a comparison); `requirements.txt` lists its packages
+- `backend/`: the web server (`main.py`: the endpoints; `store.py`: where the baselines come from;
+  `runs.py`: runs a comparison; `models.py`: the tables; `db.py`: the database connection and saving);
+  `requirements.txt` lists its packages
 - `check_phase1.sh`, `check_phase2.sh`, `check_variants.sh`, `check_phase3.sh`, `check_phase4.sh`: end-to-end checks

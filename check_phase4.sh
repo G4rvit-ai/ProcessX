@@ -64,6 +64,39 @@ status_of() { sed -n '1s/^HTTP\/[0-9.]* \([0-9]*\).*/\1/p' "$WORK/head"; }
 # json_get FILE 'expression'    prints the value of a Python expression about the JSON file (its content is called d)
 json_get() { python3 -c 'import json, sys; d = json.load(open(sys.argv[1])); print(eval(sys.argv[2]))' "$1" "$2" 2>&1; }
 
+# dbq 'expression'    asks the database file ($DB) directly, with Python's plain sqlite3 (not the backend's own SQLAlchemy).
+# The expression can use c (the connection) and json.
+dbq() { python3 -c 'import json, sqlite3, sys; c = sqlite3.connect(sys.argv[1]); print(eval(sys.argv[2]))' "$DB" "$1" 2>&1; }
+rows() { dbq 'c.execute("select count(*) from comparisons").fetchone()[0]'; }
+# row_agrees ANSWER.json    does the row with that answer's id hold exactly that answer? (prints True or False)
+row_agrees() {
+    python3 -c 'import json, sqlite3, sys
+d = json.load(open(sys.argv[2]))
+r = sqlite3.connect(sys.argv[1]).execute("select baseline_name, run, score, level, matches, features_compared, outside_range, result from comparisons where id = ?", (d["id"],)).fetchone()
+want = (d["baseline"], d["run"], d["score"], d["level"], int(d["matches"]), d["features_compared"], d["outside_range"])
+print(r is not None and r[:7] == want and json.loads(r[7]) == {k: v for k, v in d.items() if k != "id"})' "$DB" "$1" 2>&1
+}
+free_port() { python3 -c 'import socket; s = socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1])'; }
+# start_second URL    starts one more server (SERVER2) on a free port with that database URL; sets PORT2, and UP2 to yes or no
+start_second() {
+    PORT2=$(free_port)
+    cd "$WORK" || exit 1
+    launch env PROCESSX_DATABASE_URL="$1" python3 -m uvicorn --app-dir "$ROOT" backend.main:app --host 127.0.0.1 --port "$PORT2" > "$WORK/server2.log" 2>&1 &
+    SERVER2=$!
+    cd "$ROOT" || exit 1
+    UP2=no
+    for _ in $(seq 1 50); do
+        if curl -s --max-time 1 -o /dev/null "http://127.0.0.1:$PORT2/health"; then UP2=yes; break; fi
+        kill -0 "$SERVER2" 2>/dev/null || break
+        sleep 0.2
+    done
+}
+stop_second() {
+    kill "$SERVER2" 2>/dev/null
+    wait "$SERVER2" 2>/dev/null
+    SERVER2=""
+}
+
 echo "0. Tools and files"
 for tool in python3 curl strace; do
     if ! command -v "$tool" >/dev/null 2>&1; then
@@ -71,20 +104,21 @@ for tool in python3 curl strace; do
         exit 1
     fi
 done
-if ! python3 -c "import fastapi, uvicorn" 2>/dev/null; then
-    echo "  FastAPI and uvicorn are not installed for this python3."
+if ! python3 -c "import fastapi, uvicorn, sqlalchemy" 2>/dev/null; then
+    echo "  FastAPI, uvicorn and SQLAlchemy are not all installed for this python3."
     echo "  Activate the virtual environment (source venv/bin/activate), then run:  pip install -r requirements.txt"
     exit 1
 fi
-for file in backend/main.py backend/store.py backend/runs.py backend/__init__.py requirements.txt check_phase3.sh; do
+for file in backend/main.py backend/store.py backend/runs.py backend/db.py backend/models.py backend/__init__.py requirements.txt check_phase3.sh; do
     if [ ! -f "$file" ]; then
         echo "  Missing file: $file"
         exit 1
     fi
 done
-pass "python3, curl, FastAPI and uvicorn are installed, and the backend files are there"
+pass "python3, curl, FastAPI, uvicorn and SQLAlchemy are installed, and the backend files are there"
 contains "requirements.txt lists fastapi" requirements.txt "fastapi"
 contains "requirements.txt lists uvicorn" requirements.txt "uvicorn"
+contains "requirements.txt lists sqlalchemy" requirements.txt "sqlalchemy"
 
 echo
 echo "1. Start the server (from another folder, with a messy environment)"
@@ -100,9 +134,11 @@ for s in (signal.SIGINT, signal.SIGQUIT, signal.SIGTERM):
     signal.signal(s, signal.SIG_DFL)
 os.execvp(sys.argv[1], sys.argv[1:])' "$@"
 }
+# Every server of this check uses a database file of its own in the temporary folder, never the real processx.db.
+DB="$WORK/check4.db"
 ROOT=$(pwd)
 cd "$WORK" || exit 1
-launch env FOO=bar LANG=de_DE.UTF-8 LC_ALL=de_DE.UTF-8 python3 -m uvicorn --app-dir "$ROOT" backend.main:app --host 127.0.0.1 --port "$PORT" > "$WORK/server.log" 2>&1 &
+launch env FOO=bar LANG=de_DE.UTF-8 LC_ALL=de_DE.UTF-8 PROCESSX_DATABASE_URL="sqlite:///$DB" python3 -m uvicorn --app-dir "$ROOT" backend.main:app --host 127.0.0.1 --port "$PORT" > "$WORK/server.log" 2>&1 &
 SERVER=$!
 cd "$ROOT" || exit 1
 UP=no
@@ -306,7 +342,7 @@ expect "...and no file was added or removed" "$(ls baselines | wc -l | tr -d ' '
 rm -f baselines/check4*.json
 
 echo
-echo "8. POST /baselines/<name>/compare: run the saved command once and compare it"
+echo "8. POST /baselines/<name>/compare: run the saved command once, compare it, and save the comparison"
 # A tiny program of our own. Normally it writes a file, reads it and deletes it. If /tmp/check4_flag exists it also
 # starts /bin/date and reads /etc/passwd, so we can make a run odd whenever we like. The last lines are a canary:
 # /bin/date also runs if the program gets the wrong environment (the server itself was started with LANG and FOO set).
@@ -345,8 +381,9 @@ get /baselines/check4_run/compare -X POST
 expect "answers 200" "$(status_of)" 200
 contains "the answer is JSON" "$WORK/head" "content-type: application/json"
 cp "$WORK/body" "$WORK/run1.json"
-expect "the answer has exactly these fields" "$(json_get "$WORK/run1.json" 'sorted(d)')" \
-    "['baseline', 'command', 'differences', 'features_compared', 'findings', 'level', 'matches', 'outside_by_kind', 'outside_range', 'run', 'score', 'unscored', 'warnings']"
+expect "the answer has exactly these fields (the new one: id)" "$(json_get "$WORK/run1.json" 'sorted(d)')" \
+    "['baseline', 'command', 'differences', 'features_compared', 'findings', 'id', 'level', 'matches', 'outside_by_kind', 'outside_range', 'run', 'score', 'unscored', 'warnings']"
+expect "the first comparison saved in a new database gets id 1 (a whole number)" "$(json_get "$WORK/run1.json" '[type(d["id"]).__name__, d["id"]]')" "['int', 1]"
 expect "it names the baseline, and the command is the one saved in the baseline file" \
     "$(json_get "$WORK/run1.json" '[d["baseline"], d["command"] == json.load(open("baselines/check4_run.json"))["command"]]')" "['check4_run', True]"
 expect "the run scores no more than 2 and is called normal (the server's own LANG and FOO did not reach the program)" \
@@ -409,6 +446,7 @@ rm -f /tmp/check4_flag
 
 echo "  -- a web page from another site cannot start a run"
 BEFORE=$(ls -d traces/runs/compare_check4_* 2>/dev/null | wc -l | tr -d ' ')
+ROWS0=$(rows)
 get /baselines/check4_run/compare -X POST -H "Origin: http://evil.example"
 expect "a request that says it comes from another site is refused with 403" "$(status_of)" 403
 contains "...and the message says why" "$WORK/body" "another web page"
@@ -423,6 +461,7 @@ expect "a request addressed to another name is refused with 400 (DNS rebinding)"
 get /health -H "Host: evil.example"
 expect "...also when it only wants to read (GET /health gives 400)" "$(status_of)" 400
 expect "none of those requests started a run (no new run folder)" "$(ls -d traces/runs/compare_check4_* 2>/dev/null | wc -l | tr -d ' ')" "$BEFORE"
+expect "...and none of them was saved in the database" "$(rows)" "$ROWS0"
 get /baselines/check4_run/compare -X POST -H "Origin: http://127.0.0.1:$PORT"
 expect "the Origin of this server's own /docs page is accepted (200)" "$(status_of)" 200
 get /baselines/check4_run/compare -X POST -H "Host: localhost:$PORT" -H "Origin: http://localhost:$PORT"
@@ -441,6 +480,7 @@ expect "...and the raw traces of both runs never start /bin/touch" \
 
 echo "  -- mistakes"
 BEFORE=$(ls -d traces/runs/compare_check4_* 2>/dev/null | wc -l | tr -d ' ')
+ROWS0=$(rows)
 get /baselines/check4_nope/compare -X POST
 expect "an unknown baseline gives 404" "$(status_of)" 404
 contains "...and the message names it" "$WORK/body" "No baseline named 'check4_nope'"
@@ -457,6 +497,7 @@ get "/baselines/$(printf 'a%.0s' $(seq 1 3000))/compare" -X POST
 expect "a name 3000 characters long gives 404" "$(status_of)" 404
 expect "...and the message does not echo all 3000 characters back" "$([ "$(wc -c < "$WORK/body")" -lt 300 ] && echo short || echo long)" short
 expect "none of those mistakes started a run (no new run folder)" "$(ls -d traces/runs/compare_check4_* 2>/dev/null | wc -l | tr -d ' ')" "$BEFORE"
+expect "...and none of them was saved in the database" "$(rows)" "$ROWS0"
 get /baselines/check4_run/compare
 expect "GET on the compare address is refused with 405" "$(status_of)" 405
 contains "...and the answer says POST is the method that works" "$WORK/head" "allow: POST"
@@ -466,8 +507,10 @@ for method in PUT DELETE PATCH; do
     [ "$(status_of)" = 405 ] && REFUSED=$((REFUSED + 1))
 done
 expect "PUT, DELETE and PATCH are refused too (3 of 3 give 405)" "$REFUSED" 3
+ROWS0=$(rows)
 get /baselines/check4_gone/compare -X POST
 expect "a baseline whose program no longer exists gives 500, not a crash" "$(status_of)" 500
+expect "...and nothing was saved in the database for it" "$(rows)" "$ROWS0"
 contains "...and the message says it could not be run" "$WORK/body" "could not be run"
 lacks "...and does not show where the program was supposed to be" "$WORK/body" "/nonexistent"
 expect "...and no half-made run folder is left behind" "$(ls -d traces/runs/compare_check4_gone_* 2>/dev/null | wc -l | tr -d ' ')" 0
@@ -521,11 +564,72 @@ LEFT=$(ps -eo pid,args | awk '$2 == "/bin/sleep" && $3 == "31" {print $1}')
 expect "...and the program itself is gone, not left running in the background" "$(echo "$LEFT" | grep -c '[0-9]')" 0
 [ -n "$LEFT" ] && echo "$LEFT" | xargs kill 2>/dev/null
 
+echo "  -- every comparison is saved (read straight from the database file, with plain sqlite3)"
+expect "the database file exists" "$([ -f "$DB" ] && echo yes)" yes
+expect "the table comparisons has exactly the expected columns" \
+    "$(dbq 'sorted(r[1] for r in c.execute("pragma table_info(comparisons)"))')" \
+    "['baseline_name', 'created_at', 'features_compared', 'id', 'level', 'matches', 'outside_range', 'result', 'run', 'score']"
+FOLDERS=$(ls -d traces/runs/compare_check4_* 2>/dev/null | wc -l | tr -d ' ')
+expect "one row for every comparison that ran: rows = run folders ($FOLDERS)" "$(rows)" "$FOLDERS"
+expect "every row names a run folder that exists, and every run folder has a row" \
+    "$(dbq 'sorted(r[0] for r in c.execute("select run from comparisons"))')" \
+    "$(ls traces/runs | grep '^compare_check4_' | python3 -c 'import sys; print(sorted(sys.stdin.read().split()))')"
+expect "the ids are 1, 2, 3 ... with no gaps" \
+    "$(dbq '[r[0] for r in c.execute("select id from comparisons order by id")] == list(range(1, c.execute("select count(*) from comparisons").fetchone()[0] + 1))')" True
+expect "the normal run's row holds exactly its answer (every column, and the whole answer as JSON)" "$(row_agrees "$WORK/run1.json")" True
+expect "the odd run's row holds exactly its answer too" "$(row_agrees "$WORK/odd.json")" True
+expect "the odd run was saved after the normal one (a bigger id)" \
+    "$(python3 -c 'import json, sys; print(json.load(open(sys.argv[1]))["id"] > json.load(open(sys.argv[2]))["id"])' "$WORK/odd.json" "$WORK/run1.json")" True
+expect "the time saved is UTC and recent (within 2 minutes of now)" \
+    "$(dbq 'abs(__import__("datetime").datetime.now(__import__("datetime").timezone.utc).replace(tzinfo=None) - __import__("datetime").datetime.strptime(c.execute("select created_at from comparisons order by id desc limit 1").fetchone()[0], "%Y-%m-%d %H:%M:%S.%f")) < __import__("datetime").timedelta(minutes=2)')" True
+
+echo "  -- the history survives a server restart"
+OLDCOUNT=$(rows)
+OLDMAX=$(dbq 'c.execute("select max(id) from comparisons").fetchone()[0]')
+start_second "sqlite:///$DB"
+expect "(setup) a second server on the same database file starts" "$UP2" yes
+expect "starting it did not wipe the history (the same number of rows)" "$(rows)" "$OLDCOUNT"
+MAIN_PORT=$PORT
+PORT=$PORT2
+get /baselines/check4_run/compare -X POST
+expect "a comparison there answers 200" "$(status_of)" 200
+expect "...and its id continues the numbering ($((OLDMAX + 1)))" "$(json_get "$WORK/body" 'd["id"]')" "$((OLDMAX + 1))"
+PORT=$MAIN_PORT
+stop_second
+expect "...and the database has exactly one more row" "$(rows)" "$((OLDCOUNT + 1))"
+
+echo "  -- a database that cannot be opened"
+PORT2=$(free_port)
+cd "$WORK" || exit 1
+launch env PROCESSX_DATABASE_URL="sqlite:////nonexistent_check4_folder/x.db" python3 -m uvicorn --app-dir "$ROOT" backend.main:app --host 127.0.0.1 --port "$PORT2" > "$WORK/server2.log" 2>&1 &
+SERVER2=$!
+cd "$ROOT" || exit 1
+for _ in $(seq 1 75); do kill -0 "$SERVER2" 2>/dev/null || break; sleep 0.2; done
+expect "a server whose database cannot be opened stops by itself, instead of starting half-broken" "$(kill -0 "$SERVER2" 2>/dev/null && echo running || echo stopped)" stopped
+contains "...and its log says why" "$WORK/server2.log" "unable to open database file"
+expect "...and nothing answers on its port" "$(curl -s --max-time 2 -o /dev/null "http://127.0.0.1:$PORT2/health" && echo answers || echo silent)" silent
+stop_second
+
+echo "  -- a database that fails while the server is running"
+start_second "sqlite:///$WORK/check4_b.db"
+expect "(setup) a server with its own empty database starts" "$UP2" yes
+python3 -c 'import sqlite3, sys; c = sqlite3.connect(sys.argv[1]); c.execute("drop table comparisons"); c.commit()' "$WORK/check4_b.db"
+PORT=$PORT2
+get /baselines/check4_run/compare -X POST
+expect "with the table gone, the comparison still runs and answers 200 (it did run, so its answer is still given)" "$(status_of)" 200
+expect "...the id is null, because nothing was saved" "$(json_get "$WORK/body" 'd["id"]')" None
+contains "...the answer warns that it was not saved" "$WORK/body" "could not be saved in the database"
+contains "...and the server's log says why" "$WORK/server2.log" "no such table"
+get /health
+expect "the server is still alive after that" "$(status_of)" 200
+PORT=$MAIN_PORT
+stop_second
+
 echo "  -- a computer without strace"
 mkdir "$WORK/empty"
 PY=$(command -v python3)
 PORT2=$(python3 -c 'import socket; s = socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1])')
-PATH="$WORK/empty" "$PY" -m uvicorn --app-dir "$ROOT" backend.main:app --host 127.0.0.1 --port "$PORT2" > "$WORK/server2.log" 2>&1 &
+PROCESSX_DATABASE_URL="sqlite:///$WORK/check4_nostrace.db" PATH="$WORK/empty" "$PY" -m uvicorn --app-dir "$ROOT" backend.main:app --host 127.0.0.1 --port "$PORT2" > "$WORK/server2.log" 2>&1 &
 SERVER2=$!
 UP2=no
 for _ in $(seq 1 50); do
@@ -545,6 +649,7 @@ contains "...and says strace is not installed" "$WORK/body" "strace is not insta
 get /health
 expect "the server is still alive after that (the Phase 3 code stops with sys.exit; the backend must not)" "$(status_of)" 200
 expect "...and no run folder was left behind" "$(ls -d traces/runs/compare_check4_* 2>/dev/null | wc -l | tr -d ' ')" "$BEFORE"
+expect "...and nothing was saved in its database" "$(python3 -c 'import sqlite3, sys; print(sqlite3.connect(sys.argv[1]).execute("select count(*) from comparisons").fetchone()[0])' "$WORK/check4_nostrace.db")" 0
 PORT=$MAIN_PORT
 kill "$SERVER2" 2>/dev/null
 wait "$SERVER2" 2>/dev/null
