@@ -8,8 +8,9 @@ An unusual run is a reason to look closer, not proof of malware. This is not an 
 - Phase 1 done: run a program, capture its system calls, parse them, print statistics.
 - Phase 2 done: turn every run into a feature record (JSON) and measure how repeatable the features are.
 - Phase 3 done: a baseline of normal behavior, a comparison against it, and a simple, explainable score.
-- Phase 4 in progress: a backend (FastAPI). Steps 1-2 done: it answers /health and shows the saved baselines.
-- Next: more backend endpoints, then a database for runs, baselines and scores.
+- Phase 4 in progress: a backend (FastAPI). Steps 1-3 done: it answers /health, shows the saved baselines
+  and can run a comparison.
+- Next: a database for runs, baselines and scores, then a dashboard.
 
 ## Requirements
 Linux, strace, gcc and Python 3.10 or newer. Phases 1 to 3 need no extra Python packages.
@@ -64,7 +65,8 @@ Local sockets (a program talking to another program on this computer) are not "t
     uvicorn backend.main:app --reload        # from the project folder; stop it with Ctrl+C
 
 Then open http://127.0.0.1:8000/health (the data) or http://127.0.0.1:8000/docs (every endpoint,
-with a Try it button). The server only listens on this computer (127.0.0.1).
+with a Try it button). The server only listens on this computer (127.0.0.1). It keeps its terminal
+busy, so talk to it from a browser or from a second terminal (curl).
 
 - `GET /health`: `{"status": "ok", "strace": true, "baselines": 4}`: alive, is strace installed,
   how many baselines are saved in `baselines/`.
@@ -73,6 +75,12 @@ with a Try it button). The server only listens on this computer (127.0.0.1).
 - `GET /baselines/<name>`: one baseline in full: for every feature, the lowest and highest value seen
   in its normal runs. Unknown name: 404. Unusable file: 500 with the reason. Read-only: nothing can be
   changed over HTTP.
+- `POST /baselines/<name>/compare`: runs the program saved in that baseline once, in the same fixed
+  environment, and answers with the score, the level, every point with its reason, and every feature
+  that left the baseline's range. The run is saved in `traces/runs/`. Only the saved command is ever
+  run, never one from the request; one comparison at a time (409 if one is running); a request that
+  another web page made your browser send is refused (403).
+  Try it from a second terminal: `curl -X POST http://127.0.0.1:8000/baselines/demo/compare`
 
 ## Checks
 
@@ -94,6 +102,9 @@ the same program made 81, 97 or 155 calls in different settings. That is why bas
 comparisons always run in the same fixed environment.
 Baselines built before Phase 3 step 5 do not know the internet/local socket split. They still
 work; rebuild one (same `build` command) to get the split.
+A program that starts with SIGINT, SIGQUIT or SIGTERM ignored (what a background job in a script gets)
+makes one system call fewer if it is a shell. That is not part of the fixed environment, so build
+baselines and start the server from a normal terminal, not from a script.
 
 ## Layout
 - `test_programs/`: small programs that we trace (`variants.c` has a normal mode and six odd ones)
@@ -105,6 +116,6 @@ work; rebuild one (same `build` command) to get the split.
   - Phase 2: `features.py` (categories, socket kinds), `file_features.py`, `process_features.py`,
     `failure_timing.py`, `feature_record.py` (one JSON record per run), `stability.py`
   - Phase 3: `runner.py` (fixed-environment runs), `baseline.py`, `compare.py`, `score.py`
-- `backend/`: the web server (`main.py`: the endpoints; `store.py`: where the data comes from);
-  `requirements.txt` lists its packages
+- `backend/`: the web server (`main.py`: the endpoints; `store.py`: where the data comes from;
+  `runs.py`: runs a comparison); `requirements.txt` lists its packages
 - `check_phase1.sh`, `check_phase2.sh`, `check_variants.sh`, `check_phase3.sh`, `check_phase4.sh`: end-to-end checks

@@ -56,8 +56,10 @@ def run_traced(command, trace_path, env=None, timeout=RUN_TIMEOUT):
     if strace is None:
         sys.exit("strace is not installed. Install it with: sudo apt install strace")
     try:
+        # --kill-on-exit: when the time is up, subprocess kills strace, and this makes the kernel stop the program too
+        # (without it the program keeps running in the background, which a server cannot afford).
         result = subprocess.run(
-            [strace, "-f", "-tt", "-T", "-o", trace_path, "--"] + command,
+            [strace, "--kill-on-exit", "-f", "-tt", "-T", "-o", trace_path, "--"] + command,
             capture_output=True, text=True, errors="replace", stdin=subprocess.DEVNULL,
             timeout=timeout, env=env,
         )
