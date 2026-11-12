@@ -87,7 +87,125 @@ export function LatestComparison({ comparison }) {
   );
 }
 
-export function HistoryTable({ comparisons, total }) {
+export function BaselinesPanel({ baselines, error, selectedName, detail, detailError, detailLoading, onSelect }) {
+  return (
+    <section className="baselines-section" aria-labelledby="baselines-title">
+      <div className="section-heading">
+        <div>
+          <p className="eyebrow">Saved behavior profiles</p>
+          <h2 id="baselines-title">Baselines</h2>
+        </div>
+        {baselines && <p className="history-count">{baselines.count} usable</p>}
+      </div>
+      {error ? (
+        <p className="panel-message panel-error" role="alert">{error}</p>
+      ) : !baselines ? (
+        <p className="panel-message">Loading baselines…</p>
+      ) : baselines.baselines.length === 0 ? (
+        <p className="panel-message">No usable baselines found. Build one with <code>src/baseline.py build</code>.</p>
+      ) : (
+        <div className="baseline-grid">
+          {baselines.baselines.map((baseline) => (
+            <article className={`baseline-card${selectedName === baseline.name ? " is-selected" : ""}`} key={baseline.name}>
+              <div className="baseline-card-heading">
+                <div>
+                  <h3>{baseline.name}</h3>
+                  <p>{baseline.program}</p>
+                </div>
+                <button
+                  type="button"
+                  className="button button-small"
+                  aria-expanded={selectedName === baseline.name}
+                  onClick={() => onSelect(selectedName === baseline.name ? null : baseline.name)}
+                >
+                  {selectedName === baseline.name ? "Hide ranges" : "Feature ranges"}
+                </button>
+              </div>
+              <dl className="baseline-meta">
+                <div><dt>Normal runs</dt><dd>{baseline.runs}</dd></div>
+                <div><dt>Features</dt><dd>{baseline.feature_count}</dd></div>
+                <div><dt>Command</dt><dd><code>{(baseline.command ?? []).join(" ") || "Unavailable"}</code></dd></div>
+              </dl>
+              {selectedName === baseline.name && (
+                <div className="feature-ranges">
+                  {detailLoading ? <p>Loading feature ranges…</p> : detailError ? (
+                    <p className="panel-error" role="alert">{detailError}</p>
+                  ) : detail ? (
+                    <>
+                      <h4>Normal range for each feature</h4>
+                      <div className="range-scroll" tabIndex="0" aria-label={`${baseline.name} feature ranges`}>
+                        <table>
+                          <thead><tr><th scope="col">Feature</th><th scope="col">Minimum</th><th scope="col">Maximum</th><th scope="col">Runs present</th></tr></thead>
+                          <tbody>
+                            {Object.entries(detail.features ?? {}).map(([feature, range]) => (
+                              <tr key={feature}>
+                                <td className="mono">{feature}</td>
+                                <td>{range.min ?? "—"}</td>
+                                <td>{range.max ?? "—"}</td>
+                                <td>{range.present ?? "—"} of {detail.runs}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </>
+                  ) : null}
+                </div>
+              )}
+            </article>
+          ))}
+        </div>
+      )}
+      {baselines?.unreadable?.length > 0 && (
+        <details className="unreadable-baselines">
+          <summary>{baselines.unreadable.length} unusable {baselines.unreadable.length === 1 ? "baseline file" : "baseline files"}</summary>
+          <ul>{baselines.unreadable.map((item) => <li key={item.name}><strong>{item.name}</strong>: {item.problem}</li>)}</ul>
+        </details>
+      )}
+    </section>
+  );
+}
+
+export function HistoryFilters({ baselines, values, onChange, onSubmit, onReset, disabled }) {
+  return (
+    <form className="history-filters" onSubmit={onSubmit}>
+      <label>
+        <span>Baseline</span>
+        <select value={values.baseline} onChange={(event) => onChange("baseline", event.target.value)}>
+          <option value="">All baselines</option>
+          {(baselines ?? []).map((baseline) => <option value={baseline.name} key={baseline.name}>{baseline.name}</option>)}
+        </select>
+      </label>
+      <label>
+        <span>Minimum score</span>
+        <input
+          type="number"
+          min="0"
+          max="100"
+          step="1"
+          inputMode="numeric"
+          placeholder="0–100"
+          value={values.minScore}
+          onChange={(event) => onChange("minScore", event.target.value)}
+        />
+      </label>
+      <label>
+        <span>Rows per page</span>
+        <select value={values.limit} onChange={(event) => onChange("limit", Number(event.target.value))}>
+          {[10, 20, 50].map((size) => <option key={size} value={size}>{size}</option>)}
+        </select>
+      </label>
+      <div className="filter-actions">
+        <button className="button button-primary" type="submit" disabled={disabled}>Apply filters</button>
+        <button className="button" type="button" onClick={onReset} disabled={disabled}>Clear</button>
+      </div>
+    </form>
+  );
+}
+
+export function HistoryTable({ comparisons, total, offset, limit, loading, onPage }) {
+  const first = total === 0 ? 0 : offset + 1;
+  const last = Math.min(offset + comparisons.length, total);
   return (
     <section className="history-section" aria-labelledby="history-title">
       <div className="section-heading">
@@ -95,15 +213,17 @@ export function HistoryTable({ comparisons, total }) {
           <p className="eyebrow">Saved runs</p>
           <h2 id="history-title">Comparison history</h2>
         </div>
-        <p className="history-count">
-          {total} {total === 1 ? "comparison" : "comparisons"} saved. The table shows the newest {Math.min(total, 20)}.
-        </p>
+        <p className="history-count">{loading ? "Loading comparisons…" : `Showing ${first}-${last} of ${total} matching comparisons`}</p>
       </div>
-      {comparisons.length === 0 ? (
+      {loading ? <p className="panel-message">Loading saved comparison history…</p> : comparisons.length === 0 ? (
         <div className="empty-state">
-          <h3>No comparisons saved yet</h3>
-          <p>Run a comparison from another terminal to create the first history entry:</p>
-          <code>curl -X POST http://127.0.0.1:8000/baselines/demo/compare</code>
+          {total === 0 ? (
+            <>
+              <h3>No matching comparisons</h3>
+              <p>Try clearing a filter, or run a comparison from another terminal:</p>
+              <code>curl -X POST http://127.0.0.1:8000/baselines/demo/compare</code>
+            </>
+          ) : <h3>No comparisons on this page</h3>}
         </div>
       ) : (
         <div className="table-scroll" tabIndex="0" aria-label="Scrollable comparison history">
@@ -137,6 +257,13 @@ export function HistoryTable({ comparisons, total }) {
             </tbody>
           </table>
         </div>
+      )}
+      {!loading && total > 0 && (
+        <nav className="pagination" aria-label="Comparison history pages">
+          <button type="button" className="button" onClick={() => onPage(Math.max(0, offset - limit))} disabled={offset === 0}>Previous</button>
+          <span>Page {Math.floor(offset / limit) + 1} of {Math.max(1, Math.ceil(total / limit))}</span>
+          <button type="button" className="button" onClick={() => onPage(offset + limit)} disabled={offset + limit >= total}>Next</button>
+        </nav>
       )}
     </section>
   );

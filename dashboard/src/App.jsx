@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { getComparisons, getHealth } from "./api.js";
-import { HistoryTable, LatestComparison, StatusStrip } from "./components.jsx";
+import { getBaseline, getBaselines, getComparisons, getHealth } from "./api.js";
+import { BaselinesPanel, HistoryFilters, HistoryTable, LatestComparison, StatusStrip } from "./components.jsx";
 
 function BackendHelp({ error }) {
   return (
@@ -16,14 +16,29 @@ function BackendHelp({ error }) {
 function App() {
   const [health, setHealth] = useState(null);
   const [history, setHistory] = useState(null);
+  const [baselines, setBaselines] = useState(null);
   const [healthError, setHealthError] = useState(null);
   const [historyError, setHistoryError] = useState(null);
+  const [baselinesError, setBaselinesError] = useState(null);
   const [checkedAt, setCheckedAt] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [loadingHistory, setLoadingHistory] = useState(true);
+  const [filters, setFilters] = useState({ baseline: "", minScore: "", limit: 20 });
+  const [appliedFilters, setAppliedFilters] = useState({ baseline: "", minScore: "", limit: 20 });
+  const [offset, setOffset] = useState(0);
+  const [latest, setLatest] = useState(null);
+  const [selectedBaseline, setSelectedBaseline] = useState(null);
+  const [baselineDetail, setBaselineDetail] = useState(null);
+  const [baselineDetailError, setBaselineDetailError] = useState(null);
+  const [loadingBaselineDetail, setLoadingBaselineDetail] = useState(false);
 
-  const refresh = useCallback(async () => {
+  const refreshStatus = useCallback(async () => {
     setRefreshing(true);
-    const [healthResult, historyResult] = await Promise.allSettled([getHealth(), getComparisons()]);
+    const [healthResult, baselinesResult, latestResult] = await Promise.allSettled([
+      getHealth(),
+      getBaselines(),
+      getComparisons({ limit: 1 }),
+    ]);
     if (healthResult.status === "fulfilled") {
       setHealth(healthResult.value);
       setHealthError(null);
@@ -31,22 +46,94 @@ function App() {
       setHealth(null);
       setHealthError(healthResult.reason instanceof Error ? healthResult.reason.message : "The backend could not be reached.");
     }
-    if (historyResult.status === "fulfilled") {
-      setHistory(historyResult.value);
-      setHistoryError(null);
+    if (baselinesResult.status === "fulfilled") {
+      setBaselines(baselinesResult.value);
+      setBaselinesError(null);
     } else {
-      setHistory(null);
-      setHistoryError(historyResult.reason instanceof Error ? historyResult.reason.message : "The comparison history could not be read.");
+      setBaselines(null);
+      setBaselinesError(baselinesResult.reason instanceof Error ? baselinesResult.reason.message : "Baselines could not be read.");
     }
+    setLatest(latestResult.status === "fulfilled" ? latestResult.value.comparisons?.[0] ?? null : null);
     setCheckedAt(new Date().toISOString());
     setRefreshing(false);
   }, []);
 
-  useEffect(() => {
-    refresh();
-  }, [refresh]);
+  const refreshDashboard = useCallback(async () => {
+    setLoadingHistory(true);
+    await refreshStatus();
+    try {
+      const result = await getComparisons({ ...appliedFilters, offset });
+      setHistory(result);
+      setHistoryError(null);
+    } catch (error) {
+      setHistory(null);
+      setHistoryError(error instanceof Error ? error.message : "The comparison history could not be read.");
+    } finally {
+      setLoadingHistory(false);
+    }
+  }, [appliedFilters, offset, refreshStatus]);
 
-  const latest = history?.comparisons?.[0] ?? null;
+  useEffect(() => {
+    refreshStatus();
+  }, [refreshStatus]);
+
+  useEffect(() => {
+    let active = true;
+    setLoadingHistory(true);
+    getComparisons({ ...appliedFilters, offset }).then((result) => {
+      if (!active) return;
+      setHistory(result);
+      setHistoryError(null);
+    }).catch((error) => {
+      if (!active) return;
+      setHistory(null);
+      setHistoryError(error instanceof Error ? error.message : "The comparison history could not be read.");
+    }).finally(() => {
+      if (active) setLoadingHistory(false);
+    });
+    return () => { active = false; };
+  }, [appliedFilters, offset]);
+
+  useEffect(() => {
+    if (!selectedBaseline) {
+      setBaselineDetail(null);
+      setBaselineDetailError(null);
+      setLoadingBaselineDetail(false);
+      return;
+    }
+    let active = true;
+    setBaselineDetail(null);
+    setBaselineDetailError(null);
+    setLoadingBaselineDetail(true);
+    getBaseline(selectedBaseline).then((detail) => {
+      if (active) setBaselineDetail(detail);
+    }).catch((error) => {
+      if (active) setBaselineDetailError(error instanceof Error ? error.message : "This baseline could not be loaded.");
+    }).finally(() => {
+      if (active) setLoadingBaselineDetail(false);
+    });
+    return () => { active = false; };
+  }, [selectedBaseline]);
+
+  function setFilter(name, value) {
+    setFilters((current) => ({ ...current, [name]: value }));
+  }
+
+  function applyFilters(event) {
+    event.preventDefault();
+    const minScore = filters.minScore === "" ? "" : Math.max(0, Math.min(100, Number(filters.minScore)));
+    setFilters((current) => ({ ...current, minScore }));
+    setAppliedFilters({ ...filters, minScore });
+    setOffset(0);
+  }
+
+  function clearFilters() {
+    const empty = { baseline: "", minScore: "", limit: 20 };
+    setFilters(empty);
+    setAppliedFilters(empty);
+    setOffset(0);
+  }
+
   return (
     <main className="page-shell">
       <header className="topbar">
@@ -64,7 +151,7 @@ function App() {
           <p>Compare a program’s latest system-call behavior with its saved baseline.</p>
         </section>
 
-        <StatusStrip health={health} checkedAt={checkedAt} onRefresh={refresh} refreshing={refreshing} />
+        <StatusStrip health={health} checkedAt={checkedAt} onRefresh={refreshDashboard} refreshing={refreshing} />
 
         {!health && <BackendHelp error={healthError} />}
         {health && !health.strace && (
@@ -76,15 +163,41 @@ function App() {
 
         <LatestComparison comparison={latest} />
 
-        {historyError && health ? (
+        <BaselinesPanel
+          baselines={baselines}
+          error={baselinesError ?? (!health ? healthError : null)}
+          selectedName={selectedBaseline}
+          detail={baselineDetail}
+          detailError={baselineDetailError}
+          detailLoading={loadingBaselineDetail}
+          onSelect={setSelectedBaseline}
+        />
+
+        <HistoryFilters
+          baselines={baselines?.baselines}
+          values={filters}
+          onChange={setFilter}
+          onSubmit={applyFilters}
+          onReset={clearFilters}
+          disabled={loadingHistory}
+        />
+
+        {historyError ? (health && (
           <div className="notice notice-error" role="alert">
             <h2>History could not be read</h2>
             <p>{historyError}</p>
             <p>Check the backend terminal for the database error, then refresh.</p>
           </div>
-        ) : history ? (
-          <HistoryTable comparisons={history.comparisons ?? []} total={history.total ?? 0} />
-        ) : null}
+        )) : (
+          <HistoryTable
+            comparisons={history?.comparisons ?? []}
+            total={history?.total ?? 0}
+            offset={offset}
+            limit={appliedFilters.limit}
+            loading={loadingHistory}
+            onPage={setOffset}
+          />
+        )}
 
         <aside className="safety-note">
           <span className="safety-icon" aria-hidden="true">i</span>

@@ -20,6 +20,17 @@ export function getHealth() {
   return getJson("/health");
 }
 
-export function getComparisons() {
-  return getJson("/comparisons?limit=20");
+export function getBaselines() {
+  return getJson("/baselines");
+}
+
+export function getBaseline(name) {
+  return getJson(`/baselines/${encodeURIComponent(name)}`);
+}
+
+export function getComparisons({ baseline = "", minScore = "", limit = 20, offset = 0 } = {}) {
+  const query = new URLSearchParams({ limit: String(limit), offset: String(offset) });
+  if (baseline) query.set("baseline", baseline);
+  if (minScore !== "") query.set("min_score", String(minScore));
+  return getJson(`/comparisons?${query}`);
 }

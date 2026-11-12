@@ -10,7 +10,7 @@ An unusual run is a reason to look closer, not proof of malware. This is not an 
 - Phase 3 done: a baseline of normal behavior, a comparison against it, and a simple, explainable score.
 - Phase 4 done: a backend (FastAPI) with a database. It answers /health, shows the
   saved baselines, runs a comparison, saves it and shows the saved history.
-- Phase 5 in progress: a React dashboard. Step 1 shows backend status and saved comparison history.
+- Phase 5 in progress: a React dashboard. Steps 1-2 show backend status, baselines and filtered comparison history.
 
 ## Requirements
 Linux, strace, gcc and Python 3.10 or newer. Phases 1 to 3 need no extra Python packages.
@@ -106,8 +106,9 @@ exists is left alone, so if a column ever changes, delete `processx.db` (or use 
 
 ## Dashboard (Phase 5)
 
-The dashboard currently shows whether the backend and `strace` are available, the latest saved
-comparison, and the newest 20 comparisons. It is a read-only view at this step.
+The dashboard shows whether the backend and `strace` are available, the latest saved comparison,
+and saved baselines with expandable feature ranges. Comparison history can be filtered by baseline
+and minimum score, and paged with a selectable page size. It is read-only.
 
 Start the backend in one terminal from the project folder:
 
