@@ -199,14 +199,44 @@ function App() {
           <span className="brand-mark" aria-hidden="true">PX</span>
           <span>Process<span className="brand-x">X</span></span>
         </a>
-        <span className="topbar-note">System call behavior, made visible</span>
+        <div className="topbar-note">
+          <span className="local-indicator" aria-hidden="true" />
+          <span><strong>LOCAL-FIRST</strong><small>System call behavior, made visible</small></span>
+        </div>
       </header>
 
       <div className="content">
-        <section className="intro">
-          <p className="eyebrow">Local analysis dashboard</p>
-          <h1>Know what changed.</h1>
-          <p>Compare a program’s latest system-call behavior with its saved baseline.</p>
+        <section className="hero-panel" aria-labelledby="page-title">
+          <div className="intro">
+            <p className="eyebrow"><span className="intro-index">01</span> Local analysis dashboard</p>
+            <h1 id="page-title">Know what changed<span className="hero-period">.</span></h1>
+            <p>Trace a run. Compare it with a baseline. Understand every difference.</p>
+            <div className="hero-tags" aria-label="Product qualities">
+              <span>Explainable scoring</span>
+              <span>Local by design</span>
+            </div>
+          </div>
+          <div className="hero-visual" aria-hidden="true">
+            <div className="flow-heading"><span>COMPARISON FLOW</span><span className="flow-signal" /></div>
+            <div className="flow-list">
+              <div className="flow-step">
+                <span className="flow-number">01</span>
+                <span className="flow-copy"><strong>Baseline</strong><small>Saved behavior</small></span>
+                <span className="flow-state">KNOWN</span>
+              </div>
+              <div className="flow-step">
+                <span className="flow-number">02</span>
+                <span className="flow-copy"><strong>New run</strong><small>System calls traced</small></span>
+                <span className="flow-state">CAPTURED</span>
+              </div>
+              <div className="flow-step flow-step-result">
+                <span className="flow-number">03</span>
+                <span className="flow-copy"><strong>Differences</strong><small>Scored and explained</small></span>
+                <span className="flow-state">CLEAR</span>
+              </div>
+            </div>
+            <div className="flow-foot"><span /><span /><span /><span /><span /><span /><span /><span /><span /></div>
+          </div>
         </section>
 
         <StatusStrip health={health} checkedAt={checkedAt} onRefresh={refreshDashboard} refreshing={refreshing} />
