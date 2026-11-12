@@ -203,7 +203,86 @@ export function HistoryFilters({ baselines, values, onChange, onSubmit, onReset,
   );
 }
 
-export function HistoryTable({ comparisons, total, offset, limit, loading, onPage }) {
+export function ComparisonDetails({ comparison, loading, error, onClose }) {
+  if (!comparison && !loading && !error) return null;
+  return (
+    <section className="comparison-details" aria-labelledby="comparison-details-title" aria-live="polite">
+      <div className="details-heading">
+        <div>
+          <p className="eyebrow">Saved comparison</p>
+          <h2 id="comparison-details-title">
+            {comparison ? `Run #${comparison.id} · ${comparison.baseline}` : "Comparison details"}
+          </h2>
+        </div>
+        <button type="button" className="button button-small" onClick={onClose}>Close details</button>
+      </div>
+      {loading ? <p className="panel-message">Loading comparison details…</p> : error ? (
+        <p className="panel-message panel-error" role="alert">{error}</p>
+      ) : comparison ? (
+        <>
+          <div className="details-summary">
+            <span className={`level-pill ${levelClass(comparison.level)}`}>{comparison.score}/100 · {formatLevel(comparison.level)}</span>
+            <time dateTime={comparison.created_at}>{formatTime(comparison.created_at)}</time>
+            <span>{comparison.outside_range} of {comparison.features_compared} features outside range</span>
+          </div>
+          <p className="details-run"><strong>Run:</strong> <code>{comparison.run}</code></p>
+
+          <section className="detail-group" aria-labelledby="findings-title">
+            <h3 id="findings-title">Scored findings</h3>
+            {comparison.findings?.length ? (
+              <ul className="finding-list">
+                {comparison.findings.map((finding, index) => (
+                  <li key={`${finding.text}-${index}`}>
+                    <strong>{finding.points} {finding.points === 1 ? "point" : "points"}</strong>
+                    <span>{finding.text}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : <p>No scored findings for this run.</p>}
+          </section>
+
+          <section className="detail-group" aria-labelledby="differences-title">
+            <h3 id="differences-title">Features outside the baseline range</h3>
+            {comparison.differences?.length ? (
+              <div className="table-scroll detail-table-scroll" tabIndex="0" aria-label="Comparison differences">
+                <table>
+                  <thead>
+                    <tr><th scope="col">Type</th><th scope="col">Feature</th><th scope="col">What happened</th><th scope="col">Run value</th><th scope="col">Normal range</th></tr>
+                  </thead>
+                  <tbody>
+                    {comparison.differences.map((difference, index) => (
+                      <tr key={`${difference.feature}-${index}`}>
+                        <td>{difference.kind}</td>
+                        <td className="mono">{difference.feature}</td>
+                        <td>{difference.what}</td>
+                        <td>{difference.value}</td>
+                        <td>{difference.baseline_low}–{difference.baseline_high}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : <p>Every compared feature was within the baseline range.</p>}
+            {comparison.outside_range > (comparison.differences?.length ?? 0) && (
+              <p className="detail-truncation">
+                Showing {comparison.differences?.length ?? 0} of {comparison.outside_range} differences; the backend limits the saved detail list.
+              </p>
+            )}
+          </section>
+
+          {comparison.warnings?.length > 0 && (
+            <section className="detail-group detail-warnings" aria-labelledby="warnings-title">
+              <h3 id="warnings-title">Warnings</h3>
+              <ul>{comparison.warnings.map((warning, index) => <li key={`${warning}-${index}`}>{warning}</li>)}</ul>
+            </section>
+          )}
+        </>
+      ) : null}
+    </section>
+  );
+}
+
+export function HistoryTable({ comparisons, total, offset, limit, loading, onPage, selectedId, onSelect }) {
   const first = total === 0 ? 0 : offset + 1;
   const last = Math.min(offset + comparisons.length, total);
   return (
@@ -240,8 +319,18 @@ export function HistoryTable({ comparisons, total, offset, limit, loading, onPag
             </thead>
             <tbody>
               {comparisons.map((item) => (
-                <tr key={item.id}>
-                  <td className="mono">#{item.id}</td>
+                <tr key={item.id} className={selectedId === item.id ? "is-selected" : undefined}>
+                  <td>
+                    <button
+                      type="button"
+                      className="comparison-link"
+                      aria-label={`View details for comparison ${item.id}`}
+                      aria-expanded={selectedId === item.id}
+                      onClick={() => onSelect(selectedId === item.id ? null : item.id)}
+                    >
+                      #{item.id}
+                    </button>
+                  </td>
                   <td><time dateTime={item.created_at}>{formatTime(item.created_at)}</time></td>
                   <td className="baseline-cell">{item.baseline}</td>
                   <td>

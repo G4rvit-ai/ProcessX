@@ -108,7 +108,8 @@ exists is left alone, so if a column ever changes, delete `processx.db` (or use 
 
 The dashboard shows whether the backend and `strace` are available, the latest saved comparison,
 and saved baselines with expandable feature ranges. Comparison history can be filtered by baseline
-and minimum score, and paged with a selectable page size. It is read-only.
+and minimum score, paged with a selectable page size, and opened to view its findings, out-of-range
+features, and warnings. It is read-only.
 
 Start the backend in one terminal from the project folder:
 

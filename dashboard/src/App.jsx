@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { getBaseline, getBaselines, getComparisons, getHealth } from "./api.js";
-import { BaselinesPanel, HistoryFilters, HistoryTable, LatestComparison, StatusStrip } from "./components.jsx";
+import { getBaseline, getBaselines, getComparison, getComparisons, getHealth } from "./api.js";
+import { BaselinesPanel, ComparisonDetails, HistoryFilters, HistoryTable, LatestComparison, StatusStrip } from "./components.jsx";
 
 function BackendHelp({ error }) {
   return (
@@ -31,6 +31,10 @@ function App() {
   const [baselineDetail, setBaselineDetail] = useState(null);
   const [baselineDetailError, setBaselineDetailError] = useState(null);
   const [loadingBaselineDetail, setLoadingBaselineDetail] = useState(false);
+  const [selectedComparisonId, setSelectedComparisonId] = useState(null);
+  const [comparisonDetail, setComparisonDetail] = useState(null);
+  const [comparisonDetailError, setComparisonDetailError] = useState(null);
+  const [loadingComparisonDetail, setLoadingComparisonDetail] = useState(false);
 
   const refreshStatus = useCallback(async () => {
     setRefreshing(true);
@@ -115,6 +119,27 @@ function App() {
     return () => { active = false; };
   }, [selectedBaseline]);
 
+  useEffect(() => {
+    if (selectedComparisonId === null) {
+      setComparisonDetail(null);
+      setComparisonDetailError(null);
+      setLoadingComparisonDetail(false);
+      return;
+    }
+    let active = true;
+    setComparisonDetail(null);
+    setComparisonDetailError(null);
+    setLoadingComparisonDetail(true);
+    getComparison(selectedComparisonId).then((detail) => {
+      if (active) setComparisonDetail(detail);
+    }).catch((error) => {
+      if (active) setComparisonDetailError(error instanceof Error ? error.message : "This comparison could not be loaded.");
+    }).finally(() => {
+      if (active) setLoadingComparisonDetail(false);
+    });
+    return () => { active = false; };
+  }, [selectedComparisonId]);
+
   function setFilter(name, value) {
     setFilters((current) => ({ ...current, [name]: value }));
   }
@@ -196,8 +221,17 @@ function App() {
             limit={appliedFilters.limit}
             loading={loadingHistory}
             onPage={setOffset}
+            selectedId={selectedComparisonId}
+            onSelect={setSelectedComparisonId}
           />
         )}
+
+        <ComparisonDetails
+          comparison={comparisonDetail}
+          loading={loadingComparisonDetail}
+          error={comparisonDetailError}
+          onClose={() => setSelectedComparisonId(null)}
+        />
 
         <aside className="safety-note">
           <span className="safety-icon" aria-hidden="true">i</span>

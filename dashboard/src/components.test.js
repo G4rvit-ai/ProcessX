@@ -104,6 +104,53 @@ test("history filters expose baseline, score and page-size controls", () => {
   assert.match(html, /Apply filters/);
 });
 
+test("comparison details render findings, differences, warning and close action", () => {
+  const html = renderToStaticMarkup(React.createElement(components.ComparisonDetails, {
+    comparison: {
+      id: 8,
+      baseline: "demo",
+      score: 8,
+      level: "slightly unusual",
+      created_at: "2026-11-12T12:00:00+00:00",
+      run: "compare-demo-2026-11-12",
+      features_compared: 40,
+      outside_range: 1,
+      findings: [{ points: 2, text: "A new file was read." }],
+      differences: [{
+        kind: "never",
+        feature: "files.read_files: /tmp/example",
+        what: "read /tmp/example",
+        value: 1,
+        baseline_low: 0,
+        baseline_high: 0,
+      }],
+      warnings: ["This baseline was built with different environment settings."],
+    },
+    loading: false,
+    error: null,
+    onClose: () => {},
+  }));
+  assert.match(html, /Run #8 · demo/);
+  assert.match(html, /2 points/);
+  assert.match(html, /A new file was read/);
+  assert.match(html, /files\.read_files/);
+  assert.match(html, /0–0/);
+  assert.match(html, /Warnings/);
+  assert.match(html, /different environment settings/);
+  assert.match(html, /Close details/);
+});
+
+test("comparison detail displays loading and API error states", () => {
+  const loadingHtml = renderToStaticMarkup(React.createElement(components.ComparisonDetails, {
+    comparison: null, loading: true, error: null, onClose: () => {},
+  }));
+  const errorHtml = renderToStaticMarkup(React.createElement(components.ComparisonDetails, {
+    comparison: null, loading: false, error: "No comparison with id 999.", onClose: () => {},
+  }));
+  assert.match(loadingHtml, /Loading comparison details/);
+  assert.match(errorHtml, /No comparison with id 999/);
+});
+
 test.after(async () => {
   if (server) await server.close();
 });

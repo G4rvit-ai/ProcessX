@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { getBaseline, getBaselines, getComparisons, getHealth } from "./api.js";
+import { getBaseline, getBaselines, getComparison, getComparisons, getHealth } from "./api.js";
 
 test("requests health and the newest 20 comparisons through the proxy", async (t) => {
   const originalFetch = globalThis.fetch;
@@ -30,10 +30,12 @@ test("encodes baseline names and sends history filters and paging", async (t) =>
 
   await getBaselines();
   await getBaseline("demo/test");
+  await getComparison(42);
   await getComparisons({ baseline: "demo", minScore: 15, limit: 10, offset: 20 });
   assert.deepEqual(requested, [
     "/api/baselines",
     "/api/baselines/demo%2Ftest",
+    "/api/comparisons/42",
     "/api/comparisons?limit=10&offset=20&baseline=demo&min_score=15",
   ]);
 });

@@ -28,6 +28,10 @@ export function getBaseline(name) {
   return getJson(`/baselines/${encodeURIComponent(name)}`);
 }
 
+export function getComparison(id) {
+  return getJson(`/comparisons/${encodeURIComponent(id)}`);
+}
+
 export function getComparisons({ baseline = "", minScore = "", limit = 20, offset = 0 } = {}) {
   const query = new URLSearchParams({ limit: String(limit), offset: String(offset) });
   if (baseline) query.set("baseline", baseline);
