@@ -8,9 +8,9 @@ An unusual run is a reason to look closer, not proof of malware. This is not an 
 - Phase 1 done: run a program, capture its system calls, parse them, print statistics.
 - Phase 2 done: turn every run into a feature record (JSON) and measure how repeatable the features are.
 - Phase 3 done: a baseline of normal behavior, a comparison against it, and a simple, explainable score.
-- Phase 4 in progress: a backend (FastAPI) with a database. Steps 1-5 done: it answers /health, shows the
+- Phase 4 done: a backend (FastAPI) with a database. It answers /health, shows the
   saved baselines, runs a comparison, saves it and shows the saved history.
-- Next: a dashboard (React) that shows the baselines and the history.
+- Phase 5 in progress: a React dashboard. Step 1 shows backend status and saved comparison history.
 
 ## Requirements
 Linux, strace, gcc and Python 3.10 or newer. Phases 1 to 3 need no extra Python packages.
@@ -104,6 +104,30 @@ The environment variable `PROCESSX_DATABASE_URL` picks another database (for SQL
 `sqlite:////full/path/x.db`). The tables are made when the server starts; a database that already
 exists is left alone, so if a column ever changes, delete `processx.db` (or use a migration tool).
 
+## Dashboard (Phase 5)
+
+The dashboard currently shows whether the backend and `strace` are available, the latest saved
+comparison, and the newest 20 comparisons. It is a read-only view at this step.
+
+Start the backend in one terminal from the project folder:
+
+    source venv/bin/activate
+    uvicorn backend.main:app --reload
+
+In a second terminal:
+
+    cd dashboard
+    npm install
+    npm run dev
+
+Open http://127.0.0.1:5173. Vite listens only on `127.0.0.1` and proxies `/api` to the backend
+at `127.0.0.1:8000`; this keeps the backend local-only and does not enable CORS. To open it from
+your Mac browser while the project runs in the Ubuntu VM, create an SSH tunnel from the Mac:
+
+    ssh -L 5173:127.0.0.1:5173 garvit@192.168.64.9
+
+Then open http://127.0.0.1:5173 on the Mac. The dashboard check is `bash check_phase5.sh`.
+
 ## Checks
 
     bash check_phase1.sh
@@ -111,6 +135,7 @@ exists is left alone, so if a column ever changes, delete `processx.db` (or use 
     bash check_variants.sh     # six deliberately odd behaviors against a baseline
     bash check_phase3.sh       # all of Phase 3, using grep and awk on the raw traces; runs the others too
     bash check_phase4.sh       # starts the real backend, checks it with curl; runs check_phase3.sh too
+    bash check_phase5.sh       # dashboard unit tests and production build
 
 ## What is in a feature record
 Call counts, call categories (file, process, memory, network, signal), how many sockets were
@@ -141,4 +166,6 @@ baselines and start the server from a normal terminal, not from a script.
 - `backend/`: the web server (`main.py`: the endpoints; `store.py`: where the baselines come from;
   `runs.py`: runs a comparison; `models.py`: the tables; `db.py`: the database connection, saving
   and reading the history); `requirements.txt` lists its packages
-- `check_phase1.sh`, `check_phase2.sh`, `check_variants.sh`, `check_phase3.sh`, `check_phase4.sh`: end-to-end checks
+- `dashboard/`: the React dashboard (Vite development server, API client, view components and tests)
+- `check_phase1.sh`, `check_phase2.sh`, `check_variants.sh`, `check_phase3.sh`, `check_phase4.sh`,
+  `check_phase5.sh`: phase checks
