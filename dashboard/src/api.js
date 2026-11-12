@@ -1,5 +1,7 @@
+const API_PREFIX = import.meta.env?.PROD ? "" : "/api";
+
 async function requestJson(path, options = {}) {
-  const response = await fetch(`/api${path}`, {
+  const response = await fetch(`${API_PREFIX}${path}`, {
     ...options,
     headers: { Accept: "application/json", ...options.headers },
   });
