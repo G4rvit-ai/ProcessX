@@ -76,6 +76,24 @@ r = sqlite3.connect(sys.argv[1]).execute("select baseline_name, run, score, leve
 want = (d["baseline"], d["run"], d["score"], d["level"], int(d["matches"]), d["features_compared"], d["outside_range"])
 print(r is not None and r[:7] == want and json.loads(r[7]) == {k: v for k, v in d.items() if k != "id"})' "$DB" "$1" 2>&1
 }
+# items_agree LIST.json    does every comparison of that answer agree with its row in the database file? (prints True or False)
+items_agree() {
+    python3 -c 'import json, sqlite3, sys
+from datetime import datetime, timezone
+d = json.load(open(sys.argv[2]))
+db = sqlite3.connect(sys.argv[1])
+ok = True
+for item in d["comparisons"]:
+    r = db.execute("select baseline_name, run, score, level, matches, features_compared, outside_range, created_at from comparisons where id = ?", (item["id"],)).fetchone()
+    if r is None:
+        ok = False
+        continue
+    when = datetime.strptime(r[7], "%Y-%m-%d %H:%M:%S.%f").replace(tzinfo=timezone.utc)
+    ok = ok and (item["baseline"], item["run"], item["score"], item["level"], item["matches"], item["features_compared"], item["outside_range"]) == (r[0], r[1], r[2], r[3], bool(r[4]), r[5], r[6]) and datetime.fromisoformat(item["created_at"]) == when
+print(ok)' "$DB" "$1" 2>&1
+}
+# ask 'PATH' 'expression'    asks the server, and prints the value of a Python expression about its JSON answer (called d)
+ask() { get "$1"; json_get "$WORK/body" "$2"; }
 free_port() { python3 -c 'import socket; s = socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1])'; }
 # start_second URL    starts one more server (SERVER2) on a free port with that database URL; sets PORT2, and UP2 to yes or no
 start_second() {
@@ -204,6 +222,8 @@ contains "it lists /health" "$WORK/body" '"/health"'
 contains "it lists /baselines" "$WORK/body" '"/baselines"'
 contains "it lists /baselines/{name}" "$WORK/body" '"/baselines/{name}"'
 contains "it lists /baselines/{name}/compare" "$WORK/body" '"/baselines/{name}/compare"'
+contains "it lists /comparisons" "$WORK/body" '"/comparisons"'
+contains "it lists /comparisons/{comparison_id}" "$WORK/body" '"/comparisons/{comparison_id}"'
 contains "it names the project: ProcessX" "$WORK/body" '"title":"ProcessX"'
 
 echo
@@ -622,6 +642,15 @@ contains "...the answer warns that it was not saved" "$WORK/body" "could not be 
 contains "...and the server's log says why" "$WORK/server2.log" "no such table"
 get /health
 expect "the server is still alive after that" "$(status_of)" 200
+get /comparisons
+expect "reading the history gives 503 (service unavailable), not a crash" "$(status_of)" 503
+contains "...and the message says the database could not be read" "$WORK/body" "could not be read"
+contains "...and the server's log says why" "$WORK/server2.log" "could not read the comparisons"
+get /comparisons/1
+expect "reading one comparison gives 503 as well" "$(status_of)" 503
+contains "...and the server's log says why" "$WORK/server2.log" "could not read comparison 1:"
+get /health
+expect "the server is still alive after those reads" "$(status_of)" 200
 PORT=$MAIN_PORT
 stop_second
 
@@ -654,11 +683,183 @@ PORT=$MAIN_PORT
 kill "$SERVER2" 2>/dev/null
 wait "$SERVER2" 2>/dev/null
 SERVER2=""
+echo
+echo "9. GET /comparisons and GET /comparisons/<id>: reading the history back"
+echo "  -- the newest comparisons (the ones saved above)"
+ROWS=$(rows)
+get /comparisons
+expect "answers 200" "$(status_of)" 200
+contains "the answer is JSON" "$WORK/head" "content-type: application/json"
+cp "$WORK/body" "$WORK/hist.json"
+expect "the answer has exactly these fields" "$(json_get "$WORK/hist.json" 'sorted(d)')" "['comparisons', 'limit', 'offset', 'total']"
+expect "total is the number of rows in the database ($ROWS, counted with plain sqlite3)" "$(json_get "$WORK/hist.json" 'd["total"]')" "$ROWS"
+expect "without options it is a page of 20, starting at the newest" "$(json_get "$WORK/hist.json" '[d["limit"], d["offset"]]')" "[20, 0]"
+expect "it gives as many comparisons as there are, up to 20" "$(json_get "$WORK/hist.json" 'len(d["comparisons"])')" "$([ "$ROWS" -lt 20 ] && echo "$ROWS" || echo 20)"
+expect "newest first: the ids are the biggest ones in the database file, falling" \
+    "$(json_get "$WORK/hist.json" '[c["id"] for c in d["comparisons"]]')" \
+    "$(dbq '[r[0] for r in c.execute("select id from comparisons order by id desc limit 20")]')"
+expect "every item has exactly these fields (the long result is left out)" \
+    "$(json_get "$WORK/hist.json" 'all(sorted(c) == ["baseline", "created_at", "features_compared", "id", "level", "matches", "outside_range", "run", "score"] for c in d["comparisons"])')" True
+expect "matches is true or false (not 1 or 0)" "$(json_get "$WORK/hist.json" 'all(type(c["matches"]) is bool for c in d["comparisons"])')" True
+expect "every item agrees with its row in the database file (every column and the time)" "$(items_agree "$WORK/hist.json")" True
+expect "every time says it is UTC (it ends with +00:00)" "$(json_get "$WORK/hist.json" 'all(c["created_at"].endswith("+00:00") for c in d["comparisons"])')" True
+
+echo "  -- a new comparison shows up at the top, and can be read back exactly"
+get /baselines/check4_run/compare -X POST
+expect "(setup) a comparison runs and is saved" "$(status_of)" 200
+cp "$WORK/body" "$WORK/new.json"
+NEWID=$(json_get "$WORK/new.json" 'd["id"]')
+get "/comparisons?limit=1"
+cp "$WORK/body" "$WORK/top.json"
+expect "it is the first item of the list now, and total went up by one" \
+    "$(json_get "$WORK/top.json" "[d['comparisons'][0]['id'] == $NEWID, d['total']]")" "[True, $((ROWS + 1))]"
+get "/comparisons/$NEWID"
+expect "GET /comparisons/$NEWID answers 200" "$(status_of)" 200
+cp "$WORK/body" "$WORK/detail.json"
+expect "...it is exactly the answer the comparison gave, plus created_at" \
+    "$(json_get "$WORK/detail.json" "{k: v for k, v in d.items() if k != 'created_at'} == json.load(open('$WORK/new.json'))")" True
+expect "...and its time is the one the list shows" \
+    "$(json_get "$WORK/detail.json" "d['created_at'] == json.load(open('$WORK/top.json'))['comparisons'][0]['created_at']")" True
+ODD_ID=$(json_get "$WORK/odd.json" 'd["id"]')
+get "/comparisons/$ODD_ID"
+expect "the odd run from earlier (id $ODD_ID) is still there, exactly as it was answered, plus created_at" \
+    "$(json_get "$WORK/body" "{k: v for k, v in d.items() if k != 'created_at'} == json.load(open('$WORK/odd.json'))")" True
+contains "...with its findings" "$WORK/body" "read /etc/passwd (a sensitive file)"
+
+echo "  -- pages and filters (on rows made by hand in the database file: 30 for check4_hist_a, 3 for check4_hist_b)"
+python3 - "$DB" <<'EOF'
+import json
+import sqlite3
+import sys
+from datetime import datetime, timedelta, timezone
+
+db = sqlite3.connect(sys.argv[1])
+moment = datetime.now(timezone.utc).replace(tzinfo=None)
+
+
+def level(score):
+    return "normal" if score <= 2 else "slightly unusual" if score <= 9 else "unusual" if score <= 24 else "very unusual"
+
+
+def add(baseline, run, score):
+    global moment
+    moment += timedelta(seconds=1)
+    answer = {"baseline": baseline, "run": run, "matches": score == 0, "score": score, "level": level(score),
+              "features_compared": 10, "outside_range": score, "marker": "hand-made " + run, "warnings": []}
+    db.execute("insert into comparisons (created_at, baseline_name, run, score, level, matches, features_compared, outside_range, result)"
+               " values (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+               (moment.strftime("%Y-%m-%d %H:%M:%S.%f"), baseline, run, score, level(score), int(score == 0), 10, score, json.dumps(answer)))
+
+
+for score in range(30):
+    add("check4_hist_a", "hist_a_%02d" % score, score)
+for score in (40, 60, 100):
+    add("check4_hist_b", "hist_b_%d" % score, score)
+db.commit()
+EOF
+NOW=$(rows)
+expect "(setup) 33 rows were added by hand" "$NOW" "$((ROWS + 1 + 33))"
+SUM=$(sha256sum "$DB" | cut -d' ' -f1)
+# a_ids '[5:10]'   the ids of the check4_hist_a rows, newest first, cut with a Python slice (asked of the database file directly)
+a_ids() { dbq '[r[0] for r in c.execute("select id from comparisons where baseline_name = ? order by id desc", ("check4_hist_a",))]'"$1"; }
+expect "the new rows show up at once, without restarting the server (total is $NOW)" "$(ask /comparisons 'd["total"]')" "$NOW"
+expect "?baseline=check4_hist_a: total is 30" "$(ask '/comparisons?baseline=check4_hist_a' 'd["total"]')" 30
+expect "...the first page is its 20 newest rows (ids checked in the database file)" "$(ask '/comparisons?baseline=check4_hist_a' '[c["id"] for c in d["comparisons"]]')" "$(a_ids '[:20]')"
+expect "...and every one of them is of that baseline" "$(ask '/comparisons?baseline=check4_hist_a' 'all(c["baseline"] == "check4_hist_a" for c in d["comparisons"])')" True
+expect "&limit=5: the 5 newest, and the page size is reported back" \
+    "$(ask '/comparisons?baseline=check4_hist_a&limit=5' '[[c["id"] for c in d["comparisons"]], d["limit"], d["offset"]]')" "[$(a_ids '[:5]'), 5, 0]"
+expect "&limit=5&offset=5: the next 5, and the offset is reported back" \
+    "$(ask '/comparisons?baseline=check4_hist_a&limit=5&offset=5' '[[c["id"] for c in d["comparisons"]], d["limit"], d["offset"]]')" "[$(a_ids '[5:10]'), 5, 5]"
+expect "&limit=100&offset=25: the last 5 (only 30 exist), total still 30" \
+    "$(ask '/comparisons?baseline=check4_hist_a&limit=100&offset=25' '[[c["id"] for c in d["comparisons"]], d["total"]]')" "[$(a_ids '[25:]'), 30]"
+expect "&offset=30 (past the end): no comparisons, but total is still 30" "$(ask '/comparisons?baseline=check4_hist_a&offset=30' '[len(d["comparisons"]), d["total"]]')" "[0, 30]"
+ALL=""
+for off in 0 10 20; do
+    ALL="$ALL $(ask "/comparisons?baseline=check4_hist_a&limit=10&offset=$off" '" ".join(str(c["id"]) for c in d["comparisons"])')"
+done
+expect "three pages of 10 laid end to end are all 30 comparisons, newest first, none twice" "$(echo $ALL)" "$(a_ids '' | tr -d '[],')"
+expect "limit=100 is allowed (200)" "$(get '/comparisons?limit=100'; status_of)" 200
+REFUSED=0
+for q in limit=0 limit=101 limit=-1 limit=abc offset=-1 offset=abc min_score=101 min_score=-1 min_score=abc; do
+    get "/comparisons?$q"
+    [ "$(status_of)" = 422 ] && REFUSED=$((REFUSED + 1))
+done
+expect "a wrong limit, offset or min_score is refused with 422 (9 of 9)" "$REFUSED" 9
+expect "?min_score=40: total is the number of rows scoring 40 or more in the database file" \
+    "$(ask '/comparisons?min_score=40' 'd["total"]')" "$(dbq 'c.execute("select count(*) from comparisons where score >= 40").fetchone()[0]')"
+expect "...and every item scores 40 or more" "$(ask '/comparisons?min_score=40' 'all(c["score"] >= 40 for c in d["comparisons"])')" True
+expect "?baseline=check4_hist_b&min_score=60: the two scoring 60 or more, newest first (60 itself counts)" \
+    "$(ask '/comparisons?baseline=check4_hist_b&min_score=60' '[c["score"] for c in d["comparisons"]]')" "[100, 60]"
+expect "...min_score=61 leaves only the 100" "$(ask '/comparisons?baseline=check4_hist_b&min_score=61' '[c["score"] for c in d["comparisons"]]')" "[100]"
+expect "?baseline=check4_hist_a&min_score=25: the five scoring 25 to 29, newest first" \
+    "$(ask '/comparisons?baseline=check4_hist_a&min_score=25' '[c["score"] for c in d["comparisons"]]')" "[29, 28, 27, 26, 25]"
+expect "?min_score=0 filters nothing: total is every row ($NOW)" "$(ask '/comparisons?min_score=0' 'd["total"]')" "$NOW"
+expect "an unknown baseline is not an error: 200, total 0, no comparisons" "$(ask '/comparisons?baseline=check4_nope' '[d["total"], d["comparisons"]]')" "[0, []]"
+expect "a name made of SQL (x' OR '1'='1) finds nothing: it is a name, not code" "$(ask '/comparisons?baseline=x%27%20OR%20%271%27%3D%271' 'd["total"]')" 0
+expect "a % in the name is not a wildcard" "$(ask '/comparisons?baseline=%25' 'd["total"]')" 0
+expect "a part of a name finds nothing: the name must be exactly right" "$(ask '/comparisons?baseline=check4_hist' 'd["total"]')" 0
+expect "a name that tries to drop the table finds nothing..." "$(ask '/comparisons?baseline=x%27%3B%20DROP%20TABLE%20comparisons%3B%20--' 'd["total"]')" 0
+expect "...and the table and all its rows are still there" "$(rows)" "$NOW"
+OKS=0
+for q in %00 %F0%9F%98%80 %ff; do
+    get "/comparisons?baseline=$q"
+    [ "$(status_of)" = 200 ] && OKS=$((OKS + 1))
+done
+expect "odd characters in the name (a NUL, an emoji, a broken byte) do not crash it (3 of 3 answer 200)" "$OKS" 3
+
+echo "  -- one comparison in full"
+HID=$(dbq 'c.execute("select id from comparisons where run = ?", ("hist_a_17",)).fetchone()[0]')
+get "/comparisons/$HID"
+expect "a row made by hand: GET /comparisons/$HID answers 200" "$(status_of)" 200
+cp "$WORK/body" "$WORK/detail.json"
+expect "...it is the answer saved in that row, plus id and created_at (nothing else)" \
+    "$(json_get "$WORK/detail.json" 'sorted(d)')" "['baseline', 'created_at', 'features_compared', 'id', 'level', 'marker', 'matches', 'outside_range', 'run', 'score', 'warnings']"
+expect "...with the right id and the marker of that very row" "$(json_get "$WORK/detail.json" '[d["id"], d["marker"], d["score"]]')" "[$HID, 'hand-made hist_a_17', 17]"
+get "/comparisons?baseline=check4_hist_a&limit=1&offset=12"
+expect "the list item 12 places from the newest of that baseline is the same comparison, with the same time" \
+    "$(json_get "$WORK/body" "[d['comparisons'][0]['id'] == $HID, d['comparisons'][0]['created_at'] == json.load(open('$WORK/detail.json'))['created_at']]")" "[True, True]"
+get /comparisons/99999999
+expect "an id that does not exist gives 404" "$(status_of)" 404
+contains "...and the message names it" "$WORK/body" "No comparison with id 99999999"
+NOTFOUND=0
+for id in 0 -1 99999999999999999999; do
+    get "/comparisons/$id"
+    [ "$(status_of)" = 404 ] && NOTFOUND=$((NOTFOUND + 1))
+done
+expect "ids that cannot exist (0, -1 and 99999999999999999999) give 404 as well (3 of 3)" "$NOTFOUND" 3
+get "/comparisons/$(printf '9%.0s' $(seq 1 3000))"
+expect "an id 3000 digits long gives 404" "$(status_of)" 404
+expect "...and the message does not echo all 3000 digits back" "$([ "$(wc -c < "$WORK/body")" -lt 300 ] && echo short || echo long)" short
+REFUSED=0
+for id in abc 1.5; do
+    get "/comparisons/$id"
+    [ "$(status_of)" = 422 ] && REFUSED=$((REFUSED + 1))
+done
+expect "an id that is not a whole number is refused with 422 (2 of 2)" "$REFUSED" 2
+
+echo "  -- read-only, and only for this computer"
+REFUSED=0
+for method in POST PUT DELETE PATCH; do
+    for path in /comparisons "/comparisons/$NEWID"; do
+        get "$path" -X "$method"
+        [ "$(status_of)" = 405 ] && REFUSED=$((REFUSED + 1))
+    done
+done
+expect "POST, PUT, DELETE and PATCH on both history URLs are refused (8 of 8 give 405)" "$REFUSED" 8
+expect "...and no comparison was added or removed" "$(rows)" "$NOW"
+get /comparisons -H "Host: evil.example"
+expect "a request addressed to another name is refused with 400, for the history too (DNS rebinding)" "$(status_of)" 400
+get "/comparisons/$NEWID" -H "Host: evil.example"
+expect "...also for one comparison" "$(status_of)" 400
+get /comparisons -H "Origin: http://evil.example"
+lacks "a page from another site is not given permission to read the history (no access-control-allow-origin)" "$WORK/head" "access-control-allow-origin"
+expect "all the reading and refusing in this section left the database file byte for byte the same" "$(sha256sum "$DB" | cut -d' ' -f1)" "$SUM"
+
 rm -f baselines/check4*.json /tmp/check4_flag /tmp/check4_pwned
 rm -rf traces/runs/*check4*
 
 echo
-echo "9. The server stops cleanly"
+echo "10. The server stops cleanly"
 kill "$SERVER" 2>/dev/null
 for _ in $(seq 1 50); do kill -0 "$SERVER" 2>/dev/null || break; sleep 0.1; done
 expect "the server process ended after being asked to stop" "$(kill -0 "$SERVER" 2>/dev/null && echo running || echo ended)" ended
@@ -669,7 +870,7 @@ expect "the check left no baseline file behind" "$(ls baselines/check4* 2>/dev/n
 expect "...and no run folder or temporary file either" "$(ls -d traces/runs/*check4* /tmp/check4_* 2>/dev/null | wc -l | tr -d ' ')" 0
 
 echo
-echo "10. The earlier phases still pass"
+echo "11. The earlier phases still pass"
 if bash check_phase3.sh > "$WORK/phase3.out" 2>&1; then
     pass "check_phase3.sh passes   ($(grep -E '^ALL ' "$WORK/phase3.out" | tail -1 | cut -d: -f1))"
 else

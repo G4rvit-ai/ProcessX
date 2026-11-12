@@ -8,9 +8,9 @@ An unusual run is a reason to look closer, not proof of malware. This is not an 
 - Phase 1 done: run a program, capture its system calls, parse them, print statistics.
 - Phase 2 done: turn every run into a feature record (JSON) and measure how repeatable the features are.
 - Phase 3 done: a baseline of normal behavior, a comparison against it, and a simple, explainable score.
-- Phase 4 in progress: a backend (FastAPI) with a database. Steps 1-4 done: it answers /health, shows the
-  saved baselines, runs a comparison and saves it.
-- Next: endpoints that list the saved comparisons (the history), then a dashboard.
+- Phase 4 in progress: a backend (FastAPI) with a database. Steps 1-5 done: it answers /health, shows the
+  saved baselines, runs a comparison, saves it and shows the saved history.
+- Next: a dashboard (React) that shows the baselines and the history.
 
 ## Requirements
 Linux, strace, gcc and Python 3.10 or newer. Phases 1 to 3 need no extra Python packages.
@@ -82,6 +82,15 @@ busy, so talk to it from a browser or from a second terminal (curl).
   command is ever run, never one from the request; one comparison at a time (409 if one is running);
   a request that another web page made your browser send is refused (403).
   Try it from a second terminal: `curl -X POST http://127.0.0.1:8000/baselines/demo/compare`
+- `GET /comparisons`: the saved comparisons, newest first, without their long details: `total` (how many
+  match), then for each one its `id`, `created_at` (UTC), `baseline`, `run`, `score`, `level`, `matches`,
+  `features_compared` and `outside_range`. Options: `baseline=<name>` (only that baseline),
+  `min_score=<0-100>` (only that score or more), `limit=<1-100>` (the page size, default 20) and
+  `offset=<n>` (skip the newest n, to get the next page). A wrong option is refused with 422.
+  Try it: `curl -s "http://127.0.0.1:8000/comparisons?limit=3" | python3 -m json.tool`
+- `GET /comparisons/<id>`: one saved comparison in full: exactly the answer the comparison gave
+  (score, findings, differences...), plus its `id` and `created_at`. Unknown id: 404. Both are
+  read-only: the history cannot be changed over HTTP.
 
 ### Database
 Every comparison is saved in `processx.db`: one SQLite file in the project folder (not committed).
@@ -130,6 +139,6 @@ baselines and start the server from a normal terminal, not from a script.
     `failure_timing.py`, `feature_record.py` (one JSON record per run), `stability.py`
   - Phase 3: `runner.py` (fixed-environment runs), `baseline.py`, `compare.py`, `score.py`
 - `backend/`: the web server (`main.py`: the endpoints; `store.py`: where the baselines come from;
-  `runs.py`: runs a comparison; `models.py`: the tables; `db.py`: the database connection and saving);
-  `requirements.txt` lists its packages
+  `runs.py`: runs a comparison; `models.py`: the tables; `db.py`: the database connection, saving
+  and reading the history); `requirements.txt` lists its packages
 - `check_phase1.sh`, `check_phase2.sh`, `check_variants.sh`, `check_phase3.sh`, `check_phase4.sh`: end-to-end checks

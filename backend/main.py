@@ -3,6 +3,7 @@
 A small web server that other programs (soon: the dashboard) can talk to over HTTP.
 Step 1: /health.  Step 2: /baselines and /baselines/<name>.  Step 3: POST /baselines/<name>/compare.
 Step 4: every comparison is saved in a database (backend/db.py), and the answer carries its id.
+Step 5: GET /comparisons and GET /comparisons/<id> give the saved history back.
 
 Run it from the project folder (~/processx):
     uvicorn backend.main:app --reload
@@ -12,7 +13,7 @@ Then open http://127.0.0.1:8000/docs (a page that lists every endpoint and lets 
 import shutil
 from contextlib import asynccontextmanager
 
-from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from backend import db, runs, store
@@ -25,7 +26,7 @@ async def lifespan(app):
     yield
 
 
-app = FastAPI(title="ProcessX", version="0.4.0", lifespan=lifespan,
+app = FastAPI(title="ProcessX", version="0.5.0", lifespan=lifespan,
               description="System call behavior analyzer: baselines, comparisons and scores.")
 
 # Only requests addressed to this computer are answered. A request for any other name (a web page that tricks
@@ -55,6 +56,10 @@ def not_found(name):
 
 def unusable(name, problem):
     return HTTPException(status_code=500, detail=f"The file for baseline '{shorten(name)}' cannot be used: {problem}")
+
+
+def history_unreadable():
+    return HTTPException(status_code=503, detail="The database could not be read (the server's terminal says why).")
 
 
 @app.get("/health")
@@ -107,3 +112,34 @@ def compare_baseline(name: str):
     if result["id"] is None:
         result["warnings"].append("This comparison could not be saved in the database (the server's terminal says why).")
     return result
+
+
+@app.get("/comparisons")
+def list_comparisons(
+    baseline: str | None = Query(None, description="only the comparisons of the baseline with exactly this name"),
+    min_score: int | None = Query(None, ge=0, le=100, description="only the comparisons with this score or more"),
+    limit: int = Query(20, ge=1, le=100, description="how many comparisons to give (the size of a page)"),
+    offset: int = Query(0, ge=0, le=10_000_000, description="how many of the newest ones to skip (to get the next page)"),
+):
+    """The saved comparisons, newest first, without their long details (GET /comparisons/<id> has those).
+
+    "total" is how many comparisons match the filters, whatever the page size, so a page can tell how many there are.
+    Read-only: nothing here can change the history.
+    """
+    try:
+        total, page = db.list_comparisons(baseline, min_score, limit, offset)
+    except db.Unavailable:
+        raise history_unreadable() from None
+    return {"total": total, "limit": limit, "offset": offset, "comparisons": page}
+
+
+@app.get("/comparisons/{comparison_id}")
+def get_comparison(comparison_id: int):
+    """One saved comparison in full: exactly the answer it gave when it ran (score, findings, differences...), plus its id and when."""
+    try:
+        found = db.get_comparison(comparison_id)
+    except db.Unavailable:
+        raise history_unreadable() from None
+    if found is None:
+        raise HTTPException(status_code=404, detail=f"No comparison with id {shorten(str(comparison_id))}.")
+    return found
