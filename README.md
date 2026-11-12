@@ -69,6 +69,9 @@ Install the Python and JavaScript packages once:
     pip install -r requirements.txt
     npm --prefix dashboard install
 
+The dashboard lockfile is machine-local and ignored by Git; each system generates its own with
+`npm install`.
+
 Start the integrated app from the project folder:
 
     ./start_processx.sh

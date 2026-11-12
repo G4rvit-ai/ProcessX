@@ -6,3 +6,4 @@ traces/runs/
 *.db
 node_modules/
 dashboard/dist/
+dashboard/package-lock.json
