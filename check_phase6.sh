@@ -103,6 +103,14 @@ with urllib.request.urlopen(f"http://127.0.0.1:{port}/docs", timeout=3) as respo
         raise SystemExit("The API documentation route stopped working.")
 
 request = urllib.request.Request(
+    f"http://127.0.0.1:{port}/health",
+    headers={"Host": "processx.localhost"},
+)
+with urllib.request.urlopen(request, timeout=3) as response:
+    if response.status != 200 or b'"status": "ok"' not in response.read():
+        raise SystemExit("The private processx.localhost Host was not accepted.")
+
+request = urllib.request.Request(
     f"http://127.0.0.1:{port}/",
     headers={"Host": "attacker.invalid"},
 )
@@ -130,7 +138,7 @@ else:
 PY
 pass "built dashboard assets load and production API paths are same-origin"
 pass "API documentation and browser Origin protections still work"
-pass "TrustedHostMiddleware still rejects an untrusted Host"
+pass "processx.localhost is accepted and untrusted Hosts are rejected"
 
 echo
 echo "ALL $PASSED PHASE 6 CHECKS PASSED."

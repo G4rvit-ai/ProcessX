@@ -35,7 +35,10 @@ app = FastAPI(title="ProcessX", version="0.5.0", lifespan=lifespan,
 
 # Only requests addressed to this computer are answered. A request for any other name (a web page that tricks
 # the browser into talking to this server under its own name, called DNS rebinding) is refused with 400.
-app.add_middleware(TrustedHostMiddleware, allowed_hosts=["127.0.0.1", "localhost"])
+app.add_middleware(
+    TrustedHostMiddleware,
+    allowed_hosts=["127.0.0.1", "localhost", "processx.localhost"],
+)
 
 DASHBOARD_DIST = Path(__file__).resolve().parent.parent / "dashboard" / "dist"
 app.mount(

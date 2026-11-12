@@ -87,6 +87,10 @@ run this in a Mac terminal and keep it open:
     ssh -N -L 8000:127.0.0.1:8000 garvit@192.168.64.9
 
 Then open http://127.0.0.1:8000 on the Mac. The server remains local-only inside the VM.
+For a memorable private address on the Mac, use
+http://processx.localhost:8000 instead; it points back to the Mac's loopback interface and uses
+the same SSH tunnel. The backend accepts this exact hostname only. Do not replace it with a
+publicly reachable bind address.
 
 For frontend development with Vite's live reload, run the backend as above and use another VM
 terminal for `cd dashboard && npm run dev`; access port 5173 through a separate SSH tunnel.
