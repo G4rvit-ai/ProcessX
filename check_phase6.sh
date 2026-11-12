@@ -83,6 +83,17 @@ for asset in assets:
         if response.status != 200 or not response.read(64):
             raise SystemExit(f"Dashboard asset did not load: {asset}")
 
+scripts = [asset for asset in assets if asset.endswith(".js")]
+if not scripts:
+    raise SystemExit("Built dashboard HTML does not reference its JavaScript bundle.")
+bundle_parts = []
+for script in scripts:
+    with urllib.request.urlopen(f"http://127.0.0.1:{port}{script}", timeout=3) as response:
+        bundle_parts.append(response.read().decode("utf-8"))
+bundle = "\n".join(bundle_parts)
+if "`/api${" in bundle or '"/health"' not in bundle:
+    raise SystemExit("The production dashboard must call the backend's same-origin API routes directly.")
+
 with urllib.request.urlopen(f"http://127.0.0.1:{port}/baselines", timeout=3) as response:
     if response.status != 200 or b'"baselines"' not in response.read():
         raise SystemExit("The /baselines API route did not respond with baseline data.")
@@ -117,7 +128,7 @@ except urllib.error.HTTPError as error:
 else:
     raise SystemExit("Foreign page Origin was unexpectedly accepted.")
 PY
-pass "built JS/CSS assets load and /baselines remains an API endpoint"
+pass "built dashboard assets load and production API paths are same-origin"
 pass "API documentation and browser Origin protections still work"
 pass "TrustedHostMiddleware still rejects an untrusted Host"
 

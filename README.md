@@ -12,6 +12,8 @@ An unusual run is a reason to look closer, not proof of malware. This is not an 
   saved baselines, runs a comparison, saves it and shows the saved history.
 - Phase 5 done: a React dashboard for status, baselines, filtered history, comparison details and running comparisons.
 - Phase 6 done: FastAPI serves the production dashboard build from the same local-only server.
+- Phase 7 validation done: comparisons, details, baseline filters and history persistence across a
+  server restart were verified.
 
 ## Requirements
 Linux, strace, gcc, Python 3.10 or newer, and Node.js/npm for the dashboard build.
@@ -65,6 +67,7 @@ Local sockets (a program talking to another program on this computer) are not "t
 
 Install the Python and JavaScript packages once:
 
+    python3 -m venv venv
     source venv/bin/activate
     pip install -r requirements.txt
     npm --prefix dashboard install
