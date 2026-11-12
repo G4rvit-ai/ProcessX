@@ -137,6 +137,13 @@ h1, h2, h3, p { margin-top: 0; }
 .baseline-card-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 15px 15px 3px; }
 .baseline-card-heading h3 { margin: 0 0 3px; overflow-wrap: anywhere; font-size: 1.05rem; }
 .baseline-card-heading p { margin: 0; color: var(--muted); font-size: .87rem; overflow-wrap: anywhere; }
+.baseline-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
+.button-run { border-color: var(--accent); color: var(--accent); }
+.run-feedback { margin: 10px 15px 0; padding: 9px 10px; border-radius: 7px; font-size: .82rem; overflow-wrap: anywhere; }
+.run-feedback-progress { background: color-mix(in srgb, var(--accent) 10%, var(--surface-raised)); color: var(--ink); }
+.run-feedback-success { background: #e0efe6; color: #15583b; }
+.run-feedback-warning { background: var(--warning-bg); color: var(--slight-text); }
+.run-feedback-error { background: var(--danger-bg); color: var(--very-text); }
 .baseline-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 14px; margin: 12px 15px 15px; }
 .baseline-meta div { min-width: 0; }
 .baseline-meta dt { color: var(--muted); font-size: .76rem; }
@@ -245,7 +252,8 @@ tbody tr:hover { background: color-mix(in srgb, var(--accent) 4%, var(--surface)
   .empty-state code { font-size: .68rem; }
   .baseline-grid { padding: 0 12px 14px; }
   .baseline-card-heading { flex-direction: column; }
-  .baseline-card-heading .button { align-self: flex-start; }
+  .baseline-actions { justify-content: flex-start; }
+  .baseline-actions .button { align-self: flex-start; }
   .pagination { gap: 9px; padding-right: 10px; padding-left: 10px; }
   .pagination span { font-size: .79rem; }
   .comparison-details { padding: 18px 14px; }
@@ -276,6 +284,7 @@ tbody tr:hover { background: color-mix(in srgb, var(--accent) 4%, var(--surface)
   .level-pill.level-slightly-unusual { background: #41371f; }
   .level-pill.level-unusual { background: #482d23; }
   .level-pill.level-very-unusual { background: #462629; }
+  .run-feedback-success { background: #1d382b; color: #a4e0bb; }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; }

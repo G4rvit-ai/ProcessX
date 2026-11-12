@@ -109,7 +109,9 @@ exists is left alone, so if a column ever changes, delete `processx.db` (or use 
 The dashboard shows whether the backend and `strace` are available, the latest saved comparison,
 and saved baselines with expandable feature ranges. Comparison history can be filtered by baseline
 and minimum score, paged with a selectable page size, and opened to view its findings, out-of-range
-features, and warnings. It is read-only.
+features, and warnings. Step 5.4 adds **Run comparison** on a baseline to run its saved command once under
+`strace`; the dashboard shows progress, adds the result to history, and opens its details. Only
+commands in saved baselines can be run. Build baselines only for programs that are safe to run.
 
 Start the backend in one terminal from the project folder:
 

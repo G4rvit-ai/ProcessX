@@ -1,6 +1,7 @@
-async function getJson(path) {
+async function requestJson(path, options = {}) {
   const response = await fetch(`/api${path}`, {
-    headers: { Accept: "application/json" },
+    ...options,
+    headers: { Accept: "application/json", ...options.headers },
   });
   if (!response.ok) {
     let message = `Request failed (${response.status})`;
@@ -11,9 +12,15 @@ async function getJson(path) {
       if (!(error instanceof SyntaxError)) throw error;
       if (response.status === 500) message = "The backend could not be reached through the local dashboard proxy.";
     }
-    throw new Error(message);
+    const error = new Error(message);
+    error.status = response.status;
+    throw error;
   }
   return response.json();
+}
+
+function getJson(path) {
+  return requestJson(path);
 }
 
 export function getHealth() {
@@ -30,6 +37,10 @@ export function getBaseline(name) {
 
 export function getComparison(id) {
   return getJson(`/comparisons/${encodeURIComponent(id)}`);
+}
+
+export function runComparison(name) {
+  return requestJson(`/baselines/${encodeURIComponent(name)}/compare`, { method: "POST" });
 }
 
 export function getComparisons({ baseline = "", minScore = "", limit = 20, offset = 0 } = {}) {

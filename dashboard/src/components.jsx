@@ -87,7 +87,10 @@ export function LatestComparison({ comparison }) {
   );
 }
 
-export function BaselinesPanel({ baselines, error, selectedName, detail, detailError, detailLoading, onSelect }) {
+export function BaselinesPanel({
+  baselines, error, selectedName, detail, detailError, detailLoading, onSelect,
+  onRun, runningBaseline, runFeedback,
+}) {
   return (
     <section className="baselines-section" aria-labelledby="baselines-title">
       <div className="section-heading">
@@ -112,15 +115,32 @@ export function BaselinesPanel({ baselines, error, selectedName, detail, detailE
                   <h3>{baseline.name}</h3>
                   <p>{baseline.program}</p>
                 </div>
-                <button
-                  type="button"
-                  className="button button-small"
-                  aria-expanded={selectedName === baseline.name}
-                  onClick={() => onSelect(selectedName === baseline.name ? null : baseline.name)}
-                >
-                  {selectedName === baseline.name ? "Hide ranges" : "Feature ranges"}
-                </button>
+                <div className="baseline-actions">
+                  <button
+                    type="button"
+                    className="button button-small"
+                    aria-expanded={selectedName === baseline.name}
+                    onClick={() => onSelect(selectedName === baseline.name ? null : baseline.name)}
+                  >
+                    {selectedName === baseline.name ? "Hide ranges" : "Feature ranges"}
+                  </button>
+                  {onRun && (
+                    <button
+                      type="button"
+                      className="button button-small button-run"
+                      onClick={() => onRun(baseline.name)}
+                      disabled={Boolean(runningBaseline)}
+                    >
+                      {runningBaseline === baseline.name ? "Running…" : runningBaseline ? "Busy…" : "Run comparison"}
+                    </button>
+                  )}
+                </div>
               </div>
+              {runFeedback?.baseline === baseline.name && (
+                <p className={`run-feedback run-feedback-${runFeedback.type}`} role={runFeedback.type === "error" ? "alert" : "status"}>
+                  {runFeedback.message}
+                </p>
+              )}
               <dl className="baseline-meta">
                 <div><dt>Normal runs</dt><dd>{baseline.runs}</dd></div>
                 <div><dt>Features</dt><dd>{baseline.feature_count}</dd></div>

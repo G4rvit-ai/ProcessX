@@ -71,22 +71,42 @@ test("baseline panel shows summaries and normal feature ranges", () => {
     unreadable: [{ name: "broken", problem: "invalid JSON" }],
   };
   const collapsed = renderToStaticMarkup(React.createElement(components.BaselinesPanel, {
-    baselines: summary, selectedName: null, detail: null, onSelect: () => {},
+    baselines: summary, selectedName: null, detail: null, onSelect: () => {}, onRun: () => {},
   }));
   assert.match(collapsed, /demo/);
   assert.match(collapsed, /10/);
   assert.match(collapsed, /1 unusable baseline file/);
+  assert.match(collapsed, /Run comparison/);
 
   const expanded = renderToStaticMarkup(React.createElement(components.BaselinesPanel, {
     baselines: summary,
     selectedName: "demo",
     detail: { runs: 10, features: { "calls.total": { min: 20, max: 22, present: 10 } } },
-    onSelect: () => {},
+    onSelect: () => {}, onRun: () => {},
   }));
   assert.match(expanded, /calls\.total/);
   assert.match(expanded, />20</);
   assert.match(expanded, />22</);
   assert.match(expanded, /10 of 10/);
+});
+
+test("baseline panel communicates active comparisons and errors", () => {
+  const html = renderToStaticMarkup(React.createElement(components.BaselinesPanel, {
+    baselines: {
+      count: 1,
+      baselines: [{ name: "demo", program: "demo.sh", command: ["demo.sh"], runs: 10, feature_count: 1 }],
+      unreadable: [],
+    },
+    selectedName: null,
+    detail: null,
+    onSelect: () => {},
+    onRun: () => {},
+    runningBaseline: "other",
+    runFeedback: { type: "error", baseline: "demo", message: "Another comparison is already running." },
+  }));
+  assert.match(html, /Busy/);
+  assert.match(html, /role="alert"/);
+  assert.match(html, /already running/);
 });
 
 test("history filters expose baseline, score and page-size controls", () => {

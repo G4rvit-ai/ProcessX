@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { getBaseline, getBaselines, getComparison, getComparisons, getHealth } from "./api.js";
+import { getBaseline, getBaselines, getComparison, getComparisons, getHealth, runComparison } from "./api.js";
 import { BaselinesPanel, ComparisonDetails, HistoryFilters, HistoryTable, LatestComparison, StatusStrip } from "./components.jsx";
 
 function BackendHelp({ error }) {
@@ -35,6 +35,8 @@ function App() {
   const [comparisonDetail, setComparisonDetail] = useState(null);
   const [comparisonDetailError, setComparisonDetailError] = useState(null);
   const [loadingComparisonDetail, setLoadingComparisonDetail] = useState(false);
+  const [runningBaseline, setRunningBaseline] = useState(null);
+  const [runFeedback, setRunFeedback] = useState(null);
 
   const refreshStatus = useCallback(async () => {
     setRefreshing(true);
@@ -159,6 +161,37 @@ function App() {
     setOffset(0);
   }
 
+  async function handleRunComparison(name) {
+    if (runningBaseline) return;
+    setRunningBaseline(name);
+    setRunFeedback({ type: "progress", baseline: name, message: "Tracing and comparing the saved command. This can take a few seconds…" });
+    try {
+      const result = await runComparison(name);
+      if (result.id === null) {
+        setRunFeedback({
+          type: "warning",
+          baseline: name,
+          message: result.warnings?.join(" ") || "The comparison finished, but it could not be saved to history.",
+        });
+      } else {
+        setRunFeedback({ type: "success", baseline: name, message: `Comparison saved as #${result.id}. Opening its details…` });
+      }
+      await refreshDashboard();
+      if (result.id !== null) setSelectedComparisonId(result.id);
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : "The comparison request failed.";
+      let message = detail;
+      if (error?.status === 409) message = "Another comparison is already running. Wait for it to finish, then try again.";
+      else if (error?.status === 403) message = `The backend refused this page-origin request. Open the dashboard through the local address and SSH tunnel, then retry. ${detail}`;
+      else if (error?.status === 404) message = `This baseline is no longer available. Refresh the dashboard and try again. ${detail}`;
+      else if (error?.status === 503) message = `The comparison cannot run because strace is unavailable or the service is unavailable. ${detail}`;
+      else if (error?.status >= 500) message = `The backend could not complete this comparison. Check its terminal for details. ${detail}`;
+      setRunFeedback({ type: "error", baseline: name, message });
+    } finally {
+      setRunningBaseline(null);
+    }
+  }
+
   return (
     <main className="page-shell">
       <header className="topbar">
@@ -196,6 +229,9 @@ function App() {
           detailError={baselineDetailError}
           detailLoading={loadingBaselineDetail}
           onSelect={setSelectedBaseline}
+          onRun={handleRunComparison}
+          runningBaseline={runningBaseline}
+          runFeedback={runFeedback}
         />
 
         <HistoryFilters

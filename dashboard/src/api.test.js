@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { getBaseline, getBaselines, getComparison, getComparisons, getHealth } from "./api.js";
+import { getBaseline, getBaselines, getComparison, getComparisons, getHealth, runComparison } from "./api.js";
 
 test("requests health and the newest 20 comparisons through the proxy", async (t) => {
   const originalFetch = globalThis.fetch;
@@ -49,4 +49,31 @@ test("reports the backend detail for an unsuccessful response", async (t) => {
   });
   t.after(() => { globalThis.fetch = originalFetch; });
   await assert.rejects(getComparisons(), /The database could not be read/);
+});
+
+test("runs a comparison using POST and preserves API status on errors", async (t) => {
+  const originalFetch = globalThis.fetch;
+  const calls = [];
+  globalThis.fetch = async (path, options) => {
+    calls.push([path, options.method, options.headers.Accept]);
+    return { ok: true, json: async () => ({ id: 12, score: 0 }) };
+  };
+  t.after(() => { globalThis.fetch = originalFetch; });
+  assert.deepEqual(await runComparison("demo"), { id: 12, score: 0 });
+  assert.deepEqual(calls, [["/api/baselines/demo/compare", "POST", "application/json"]]);
+});
+
+test("keeps the HTTP status available for action-specific error handling", async (t) => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => ({
+    ok: false,
+    status: 409,
+    json: async () => ({ detail: "Another comparison is already running." }),
+  });
+  t.after(() => { globalThis.fetch = originalFetch; });
+  await assert.rejects(runComparison("demo"), (error) => {
+    assert.equal(error.status, 409);
+    assert.match(error.message, /already running/);
+    return true;
+  });
 });
