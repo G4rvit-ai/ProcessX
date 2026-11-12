@@ -10,11 +10,13 @@ An unusual run is a reason to look closer, not proof of malware. This is not an 
 - Phase 3 done: a baseline of normal behavior, a comparison against it, and a simple, explainable score.
 - Phase 4 done: a backend (FastAPI) with a database. It answers /health, shows the
   saved baselines, runs a comparison, saves it and shows the saved history.
-- Phase 5 in progress: a React dashboard. Steps 1-2 show backend status, baselines and filtered comparison history.
+- Phase 5 done: a React dashboard for status, baselines, filtered history, comparison details and running comparisons.
+- Phase 6 done: FastAPI serves the production dashboard build from the same local-only server.
 
 ## Requirements
-Linux, strace, gcc and Python 3.10 or newer. Phases 1 to 3 need no extra Python packages.
-The backend (Phase 4) needs the packages in requirements.txt: `pip install -r requirements.txt`.
+Linux, strace, gcc, Python 3.10 or newer, and Node.js/npm for the dashboard build.
+Phases 1 to 3 need no extra Python packages. The backend needs `requirements.txt`;
+the dashboard dependencies are in `dashboard/package.json`.
 
 ## Try it
 
@@ -59,14 +61,29 @@ Plain counts (more `openat` calls, more processes) add nothing, except the total
 system calls compared with the baseline's busiest run.
 Local sockets (a program talking to another program on this computer) are not "the network".
 
-## Backend (Phase 4)
+## Backend and dashboard (Phases 4-6)
 
-    pip install -r requirements.txt          # once, with the virtual environment active
-    uvicorn backend.main:app --reload        # from the project folder; stop it with Ctrl+C
+Install the Python and JavaScript packages once:
 
-Then open http://127.0.0.1:8000/health (the data) or http://127.0.0.1:8000/docs (every endpoint,
-with a Try it button). The server only listens on this computer (127.0.0.1). It keeps its terminal
-busy, so talk to it from a browser or from a second terminal (curl).
+    source venv/bin/activate
+    pip install -r requirements.txt
+    npm --prefix dashboard install
+
+Start the integrated app from the project folder:
+
+    ./start_processx.sh
+
+The script builds the React dashboard and starts FastAPI on `127.0.0.1:8000`. Open
+http://127.0.0.1:8000 for the dashboard or http://127.0.0.1:8000/docs for the API. Stop the
+server with Ctrl+C. To use the dashboard from your Mac browser while the app runs in the Ubuntu VM,
+run this in a Mac terminal and keep it open:
+
+    ssh -N -L 8000:127.0.0.1:8000 garvit@192.168.64.9
+
+Then open http://127.0.0.1:8000 on the Mac. The server remains local-only inside the VM.
+
+For frontend development with Vite's live reload, run the backend as above and use another VM
+terminal for `cd dashboard && npm run dev`; access port 5173 through a separate SSH tunnel.
 
 - `GET /health`: `{"status": "ok", "strace": true, "baselines": 4}`: alive, is strace installed,
   how many baselines are saved in `baselines/`.
@@ -113,24 +130,13 @@ features, and warnings. Step 5.4 adds **Run comparison** on a baseline to run it
 `strace`; the dashboard shows progress, adds the result to history, and opens its details. Only
 commands in saved baselines can be run. Build baselines only for programs that are safe to run.
 
-Start the backend in one terminal from the project folder:
-
-    source venv/bin/activate
-    uvicorn backend.main:app --reload
-
-In a second terminal:
+The Vite-only development workflow is available for frontend iteration:
 
     cd dashboard
-    npm install
     npm run dev
 
-Open http://127.0.0.1:5173. Vite listens only on `127.0.0.1` and proxies `/api` to the backend
-at `127.0.0.1:8000`; this keeps the backend local-only and does not enable CORS. To open it from
-your Mac browser while the project runs in the Ubuntu VM, create an SSH tunnel from the Mac:
-
-    ssh -L 5173:127.0.0.1:5173 garvit@192.168.64.9
-
-Then open http://127.0.0.1:5173 on the Mac. The dashboard check is `bash check_phase5.sh`.
+It listens at http://127.0.0.1:5173 and proxies `/api` to the backend at `127.0.0.1:8000`.
+For normal use, prefer `./start_processx.sh` above.
 
 ## Checks
 
@@ -140,6 +146,7 @@ Then open http://127.0.0.1:5173 on the Mac. The dashboard check is `bash check_p
     bash check_phase3.sh       # all of Phase 3, using grep and awk on the raw traces; runs the others too
     bash check_phase4.sh       # starts the real backend, checks it with curl; runs check_phase3.sh too
     bash check_phase5.sh       # dashboard unit tests and production build
+    bash check_phase6.sh       # starts the integrated app and checks dashboard/API/Host behavior
 
 ## What is in a feature record
 Call counts, call categories (file, process, memory, network, signal), how many sockets were
@@ -171,5 +178,6 @@ baselines and start the server from a normal terminal, not from a script.
   `runs.py`: runs a comparison; `models.py`: the tables; `db.py`: the database connection, saving
   and reading the history); `requirements.txt` lists its packages
 - `dashboard/`: the React dashboard (Vite development server, API client, view components and tests)
+- `start_processx.sh`: builds the dashboard and starts the integrated local-only server
 - `check_phase1.sh`, `check_phase2.sh`, `check_variants.sh`, `check_phase3.sh`, `check_phase4.sh`,
-  `check_phase5.sh`: phase checks
+  `check_phase5.sh`, `check_phase6.sh`: phase checks

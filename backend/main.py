@@ -1,19 +1,23 @@
-"""main.py - the ProcessX backend (Phase 4).
+"""main.py - the ProcessX backend and integrated dashboard (Phases 4 and 6).
 
-A small web server that other programs (soon: the dashboard) can talk to over HTTP.
+A small local-only web server for the dashboard and HTTP API.
 Step 1: /health.  Step 2: /baselines and /baselines/<name>.  Step 3: POST /baselines/<name>/compare.
 Step 4: every comparison is saved in a database (backend/db.py), and the answer carries its id.
 Step 5: GET /comparisons and GET /comparisons/<id> give the saved history back.
+Phase 6: serve the production dashboard build from / and /assets.
 
 Run it from the project folder (~/processx):
-    uvicorn backend.main:app --reload
+    ./start_processx.sh
 
-Then open http://127.0.0.1:8000/docs (a page that lists every endpoint and lets you try them).
+Then open http://127.0.0.1:8000 (dashboard) or /docs (API documentation).
 """
 import shutil
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from backend import db, runs, store
@@ -32,6 +36,25 @@ app = FastAPI(title="ProcessX", version="0.5.0", lifespan=lifespan,
 # Only requests addressed to this computer are answered. A request for any other name (a web page that tricks
 # the browser into talking to this server under its own name, called DNS rebinding) is refused with 400.
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=["127.0.0.1", "localhost"])
+
+DASHBOARD_DIST = Path(__file__).resolve().parent.parent / "dashboard" / "dist"
+app.mount(
+    "/assets",
+    StaticFiles(directory=DASHBOARD_DIST / "assets", check_dir=False),
+    name="dashboard-assets",
+)
+
+
+@app.get("/", include_in_schema=False)
+def dashboard():
+    """Serve the production dashboard build from the same local-only server as the API."""
+    index = DASHBOARD_DIST / "index.html"
+    if not index.is_file():
+        raise HTTPException(
+            status_code=503,
+            detail="The dashboard has not been built. Run: npm --prefix dashboard run build",
+        )
+    return FileResponse(index)
 
 
 def only_from_this_page(request: Request):
