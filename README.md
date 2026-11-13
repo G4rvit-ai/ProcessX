@@ -12,8 +12,8 @@ An unusual run is a reason to look closer, not proof of malware. This is not an 
   saved baselines, runs a comparison, saves it and shows the saved history.
 - Phase 5 done: a React dashboard for status, baselines, filtered history, comparison details and running comparisons.
 - Phase 6 done: FastAPI serves the production dashboard build from the same local-only server.
-- Phase 7 validation done: comparisons, details, baseline filters and history persistence across a
-  server restart were verified.
+- Phase 7 manual validation done: comparisons, details, baseline filters and history persistence
+  across a server restart were verified.
 
 ## Requirements
 Linux, strace, gcc, Python 3.10 or newer, and Node.js/npm for the dashboard build.
@@ -84,7 +84,7 @@ http://127.0.0.1:8000 for the dashboard or http://127.0.0.1:8000/docs for the AP
 server with Ctrl+C. To use the dashboard from your Mac browser while the app runs in the Ubuntu VM,
 run this in a Mac terminal and keep it open:
 
-    ssh -N -L 8000:127.0.0.1:8000 garvit@192.168.64.9
+    ssh -N -L 8000:127.0.0.1:8000 YOUR_USER@YOUR_VM_ADDRESS
 
 Then open http://127.0.0.1:8000 on the Mac. The server remains local-only inside the VM.
 For a memorable private address on the Mac, use

@@ -107,7 +107,7 @@ request = urllib.request.Request(
     headers={"Host": "processx.localhost"},
 )
 with urllib.request.urlopen(request, timeout=3) as response:
-    if response.status != 200 or b'"status": "ok"' not in response.read():
+    if response.status != 200 or b'"status":"ok"' not in response.read().replace(b" ", b""):
         raise SystemExit("The private processx.localhost Host was not accepted.")
 
 request = urllib.request.Request(
