@@ -351,16 +351,16 @@ export function HistoryTable({ comparisons, total, offset, limit, loading, onPag
                       #{item.id}
                     </button>
                   </td>
-                  <td><time dateTime={item.created_at}>{formatTime(item.created_at)}</time></td>
-                  <td className="baseline-cell">{item.baseline}</td>
-                  <td>
+                  <td data-label="When"><time dateTime={item.created_at}>{formatTime(item.created_at)}</time></td>
+                  <td data-label="Baseline" className="baseline-cell">{item.baseline}</td>
+                  <td data-label="Score">
                     <div className="table-score">
                       <strong>{item.score}</strong>
                       <ScoreRuler score={item.score} level={item.level} compact />
                     </div>
                   </td>
-                  <td><span className={`level-pill ${levelClass(item.level)}`}>{formatLevel(item.level)}</span></td>
-                  <td>{item.outside_range} of {item.features_compared} features</td>
+                  <td data-label="Level"><span className={`level-pill ${levelClass(item.level)}`}>{formatLevel(item.level)}</span></td>
+                  <td data-label="Outside range">{item.outside_range} of {item.features_compared} features</td>
                 </tr>
               ))}
             </tbody>

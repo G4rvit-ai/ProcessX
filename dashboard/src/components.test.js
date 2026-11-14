@@ -49,6 +49,8 @@ test("history renders the newest rows, counts and score labels accessibly", () =
   assert.match(html, /2 of 40 features/);
   assert.match(html, /slightly unusual/);
   assert.match(html, /tabindex="0"/);
+  assert.match(html, /data-label="When"/);
+  assert.match(html, /data-label="Outside range"/);
 });
 
 test("empty history displays the documented curl command", () => {

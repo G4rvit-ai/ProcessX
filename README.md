@@ -65,7 +65,15 @@ Local sockets (a program talking to another program on this computer) are not "t
 
 ## Backend and dashboard (Phases 4-6)
 
-Install the Python and JavaScript packages once:
+On a fresh Linux or WSL checkout, prepare the project with:
+
+    ./setup_processx.sh
+
+The script creates the Python virtual environment, installs the backend and dashboard
+dependencies, and compiles the bundled demo programs. It does not install system packages;
+install `strace`, `gcc`, Python, Node.js, and npm with your Linux distribution's package manager.
+
+To install the packages manually:
 
     python3 -m venv venv
     source venv/bin/activate
@@ -157,6 +165,7 @@ For normal use, prefer `./start_processx.sh` above.
     bash check_phase4.sh       # starts the real backend, checks it with curl; runs check_phase3.sh too
     bash check_phase5.sh       # dashboard unit tests and production build
     bash check_phase6.sh       # starts the integrated app and checks dashboard/API/Host behavior
+    bash check_python.sh       # focused Python unit tests for parser, scoring and database
 
 ## What is in a feature record
 Call counts, call categories (file, process, memory, network, signal), how many sockets were
@@ -188,6 +197,9 @@ baselines and start the server from a normal terminal, not from a script.
   `runs.py`: runs a comparison; `models.py`: the tables; `db.py`: the database connection, saving
   and reading the history); `requirements.txt` lists its packages
 - `dashboard/`: the React dashboard (Vite development server, API client, view components and tests)
+- `tests/`: focused Python unit tests for the parser, scoring rules and database history
 - `start_processx.sh`: builds the dashboard and starts the integrated local-only server
+- `setup_processx.sh`: prepares a fresh Linux/WSL checkout and compiles the demo programs
+- `LICENSE`: MIT license
 - `check_phase1.sh`, `check_phase2.sh`, `check_variants.sh`, `check_phase3.sh`, `check_phase4.sh`,
   `check_phase5.sh`, `check_phase6.sh`: phase checks

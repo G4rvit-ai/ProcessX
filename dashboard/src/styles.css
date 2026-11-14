@@ -269,6 +269,18 @@ tbody tr:hover { background: color-mix(in srgb, var(--accent) 4%, var(--surface)
   .section-heading { padding: 0 18px 16px; align-items: flex-start; flex-direction: column; }
   .history-count { text-align: left; }
   .history-section, .baselines-section { margin-left: -2px; margin-right: -2px; }
+  .history-section .table-scroll { overflow: visible; }
+  .history-section .table-scroll table { min-width: 0; }
+  .history-section thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .history-section tbody, .history-section tr { display: block; }
+  .history-section tr { padding: 8px 0; border-top: 1px solid var(--line); }
+  .history-section td,
+  .history-section td:first-child,
+  .history-section td:last-child { display: grid; grid-template-columns: 105px minmax(0, 1fr); gap: 12px; align-items: center; padding: 7px 16px; border-top: 0; white-space: normal; }
+  .history-section td::before { color: var(--muted); content: attr(data-label); font-size: .73rem; font-weight: 750; letter-spacing: .05em; text-transform: uppercase; }
+  .history-section td:first-child { display: flex; padding-top: 4px; padding-bottom: 4px; }
+  .history-section td:first-child::before { display: none; }
+  .history-section .table-score { min-width: 0; }
   .history-filters { align-items: stretch; }
   .history-filters label, .history-filters label:first-child { min-width: 0; flex: 1 1 42%; }
   .history-filters select, .history-filters input { width: 100%; }
