@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { getBaseline, getBaselines, getComparison, getComparisons, getHealth, runComparison } from "./api.js";
-import { BaselinesPanel, ComparisonDetails, DashboardOverview, HistoryFilters, HistoryTable, LatestComparison, StatusStrip } from "./components.jsx";
+import { AnalysisGuide, BaselinesPanel, ComparisonDetails, DashboardOverview, HistoryFilters, HistoryTable, LatestComparison, StatusStrip } from "./components.jsx";
 
 function BackendHelp({ error }) {
   return (
@@ -245,6 +245,8 @@ function App() {
             <div className="flow-foot"><span /><span /><span /><span /><span /><span /><span /><span /><span /></div>
           </div>
         </section>
+
+        <AnalysisGuide />
 
         <StatusStrip health={health} checkedAt={checkedAt} onRefresh={refreshDashboard} refreshing={refreshing} />
 

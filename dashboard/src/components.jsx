@@ -28,6 +28,63 @@ export function StatusStrip({ health, checkedAt, onRefresh, refreshing }) {
   );
 }
 
+export function AnalysisGuide() {
+  const stages = [
+    ["01", "Trace", "strace records the program’s system calls while it runs."],
+    ["02", "Extract", "ProcessX turns raw calls into measurable behavior features."],
+    ["03", "Compare", "The new run is checked against the saved normal range."],
+    ["04", "Explain", "Rules assign points and show exactly what changed."],
+  ];
+  const signals = [
+    ["Files", "Reads, writes, missing paths, and sensitive locations"],
+    ["Processes", "Programs started, process counts, crashes, and exit status"],
+    ["Network", "Internet sockets, while local Unix sockets stay separate"],
+    ["System calls", "Powerful calls, signals, failures, and unusual activity"],
+  ];
+  return (
+    <section className="analysis-guide" aria-labelledby="analysis-guide-title">
+      <div className="guide-intro">
+        <p className="eyebrow">What happens during a run</p>
+        <h2 id="analysis-guide-title">From process to explanation</h2>
+        <p>ProcessX does not just label a program. It records observable behavior, compares it with evidence from normal runs, and keeps the reasoning visible.</p>
+      </div>
+      <div className="pipeline" aria-label="ProcessX analysis pipeline">
+        {stages.map(([number, title, description], index) => (
+          <React.Fragment key={title}>
+            <article className="pipeline-step">
+              <span className="pipeline-number">{number}</span>
+              <h3>{title}</h3>
+              <p>{description}</p>
+            </article>
+            {index < stages.length - 1 && <span className="pipeline-arrow" aria-hidden="true">→</span>}
+          </React.Fragment>
+        ))}
+      </div>
+      <div className="signals-panel">
+        <div>
+          <span className="signals-title">Behavior signals we inspect</span>
+          <p>These observations become features and findings—not a black-box verdict.</p>
+        </div>
+        <div className="signals-grid">
+          {signals.map(([title, description]) => (
+            <div className="signal-item" key={title}>
+              <span className="signal-icon" aria-hidden="true">+</span>
+              <span><strong>{title}</strong><small>{description}</small></span>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="score-key" aria-label="Score interpretation">
+        <span className="score-key-label">Score interpretation</span>
+        <span><i className="key-swatch key-normal" />0–2 normal</span>
+        <span><i className="key-swatch key-slight" />3–9 slightly unusual</span>
+        <span><i className="key-swatch key-unusual" />10–24 unusual</span>
+        <span><i className="key-swatch key-very" />25+ very unusual</span>
+      </div>
+    </section>
+  );
+}
+
 export function ScoreRuler({ score, level, compact = false }) {
   const safeScore = Math.max(0, Math.min(100, Number(score) || 0));
   const position = scorePosition(safeScore);

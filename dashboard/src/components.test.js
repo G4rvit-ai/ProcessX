@@ -28,6 +28,15 @@ test("status strip includes backend state and refresh action", () => {
   assert.match(html, /Refresh/);
 });
 
+test("analysis guide explains the tracing and scoring pipeline", () => {
+  const html = renderToStaticMarkup(React.createElement(components.AnalysisGuide));
+  assert.match(html, /From process to explanation/);
+  assert.match(html, /strace records/);
+  assert.match(html, /Behavior signals we inspect/);
+  assert.match(html, /Internet sockets/);
+  assert.match(html, /25\+ very unusual/);
+});
+
 test("overview shows saved comparison and signal metrics", () => {
   const html = renderToStaticMarkup(React.createElement(components.DashboardOverview, {
     health: { strace: true },
