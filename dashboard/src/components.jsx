@@ -123,11 +123,15 @@ export function ScoreRuler({ score, level, compact = false }) {
 
 export function LatestComparison({ comparison }) {
   if (!comparison) return null;
+  const compared = Number(comparison.features_compared) || 0;
+  const matches = Number(comparison.matches) || 0;
+  const outsideRange = Number(comparison.outside_range) || 0;
+  const matchRate = compared ? Math.round((matches / compared) * 100) : 0;
   return (
     <section className="latest-card" aria-labelledby="latest-title">
       <div className="latest-heading">
         <div>
-          <p className="eyebrow">Most recent saved run</p>
+          <p className="eyebrow"><span className="live-pulse" aria-hidden="true" /> Most recent saved run</p>
           <h2 id="latest-title">{comparison.baseline}</h2>
         </div>
         <time dateTime={comparison.created_at}>{formatTime(comparison.created_at)}</time>
@@ -140,6 +144,25 @@ export function LatestComparison({ comparison }) {
         </div>
       </div>
       <ScoreRuler score={comparison.score} level={comparison.level} />
+      <div className="run-telemetry" aria-label="Latest run measurements">
+        <div className="telemetry-item">
+          <span className="telemetry-icon">%</span>
+          <span><strong>{matchRate}%</strong><small>within baseline</small></span>
+        </div>
+        <div className="telemetry-item">
+          <span className="telemetry-icon">✓</span>
+          <span><strong>{matches}</strong><small>matched features</small></span>
+        </div>
+        <div className="telemetry-item telemetry-alert">
+          <span className="telemetry-icon">!</span>
+          <span><strong>{outsideRange}</strong><small>outside normal range</small></span>
+        </div>
+        <div className="telemetry-item">
+          <span className="telemetry-icon">#</span>
+          <span><strong>{compared}</strong><small>features compared</small></span>
+        </div>
+      </div>
+      <div className="latest-run-line"><span>Run record</span><code>{comparison.run || "Unavailable"}</code></div>
     </section>
   );
 }

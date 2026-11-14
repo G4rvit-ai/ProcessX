@@ -37,6 +37,25 @@ test("analysis guide explains the tracing and scoring pipeline", () => {
   assert.match(html, /25\+ very unusual/);
 });
 
+test("latest comparison exposes run telemetry", () => {
+  const html = renderToStaticMarkup(React.createElement(components.LatestComparison, {
+    comparison: {
+      baseline: "demo",
+      score: 8,
+      level: "slightly unusual",
+      created_at: "2026-11-12T12:00:00+00:00",
+      matches: 38,
+      features_compared: 40,
+      outside_range: 2,
+      run: "compare-demo-123",
+    },
+  }));
+  assert.match(html, /95%/);
+  assert.match(html, /38/);
+  assert.match(html, /outside normal range/);
+  assert.match(html, /compare-demo-123/);
+});
+
 test("overview shows saved comparison and signal metrics", () => {
   const html = renderToStaticMarkup(React.createElement(components.DashboardOverview, {
     health: { strace: true },
