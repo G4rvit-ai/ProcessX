@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { getBaseline, getBaselines, getComparison, getComparisons, getHealth, runComparison } from "./api.js";
-import { BaselinesPanel, ComparisonDetails, HistoryFilters, HistoryTable, LatestComparison, StatusStrip } from "./components.jsx";
+import { BaselinesPanel, ComparisonDetails, DashboardOverview, HistoryFilters, HistoryTable, LatestComparison, StatusStrip } from "./components.jsx";
 
 function BackendHelp({ error }) {
   return (
@@ -27,6 +27,7 @@ function App() {
   const [appliedFilters, setAppliedFilters] = useState({ baseline: "", minScore: "", limit: 20 });
   const [offset, setOffset] = useState(0);
   const [latest, setLatest] = useState(null);
+  const [comparisonTotal, setComparisonTotal] = useState(null);
   const [selectedBaseline, setSelectedBaseline] = useState(null);
   const [baselineDetail, setBaselineDetail] = useState(null);
   const [baselineDetailError, setBaselineDetailError] = useState(null);
@@ -59,7 +60,13 @@ function App() {
       setBaselines(null);
       setBaselinesError(baselinesResult.reason instanceof Error ? baselinesResult.reason.message : "Baselines could not be read.");
     }
-    setLatest(latestResult.status === "fulfilled" ? latestResult.value.comparisons?.[0] ?? null : null);
+    if (latestResult.status === "fulfilled") {
+      setLatest(latestResult.value.comparisons?.[0] ?? null);
+      setComparisonTotal(latestResult.value.total ?? 0);
+    } else {
+      setLatest(null);
+      setComparisonTotal(null);
+    }
     setCheckedAt(new Date().toISOString());
     setRefreshing(false);
   }, []);
@@ -248,6 +255,14 @@ function App() {
             <p>The backend is running, but it cannot collect new system-call traces until strace is installed.</p>
           </div>
         )}
+
+        <DashboardOverview
+          health={health}
+          baselines={baselines}
+          totalComparisons={comparisonTotal}
+          latest={latest}
+          recentComparisons={history?.comparisons ?? []}
+        />
 
         <LatestComparison comparison={latest} />
 

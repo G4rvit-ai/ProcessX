@@ -197,6 +197,33 @@ h1, h2, h3, p { margin-top: 0; }
 .history-filters label:first-child { min-width: 190px; }
 .filter-actions { display: flex; gap: 8px; }
 .button-primary { border-color: var(--accent); background: var(--accent); color: var(--surface); }
+.overview-section { margin-top: 28px; }
+.overview-heading { padding: 0 0 15px; }
+.overview-heading h2 { font-size: 1.4rem; }
+.overview-caption { margin: 0; color: var(--muted); font-size: .84rem; }
+.overview-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.metric-card { position: relative; min-height: 132px; overflow: hidden; padding: 18px 17px 15px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+.metric-card::after { position: absolute; right: -24px; bottom: -34px; width: 92px; height: 92px; border: 1px solid color-mix(in srgb, var(--accent) 15%, transparent); border-radius: 50%; box-shadow: 0 0 0 12px color-mix(in srgb, var(--accent) 5%, transparent); content: ""; }
+.metric-card-accent { border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); background: linear-gradient(145deg, color-mix(in srgb, var(--accent) 11%, var(--surface)), var(--surface)); }
+.metric-card-level-unusual { border-color: color-mix(in srgb, var(--unusual) 45%, var(--line)); }
+.metric-card-level-very-unusual { border-color: color-mix(in srgb, var(--very) 45%, var(--line)); }
+.metric-label, .metric-card small { display: block; color: var(--muted); }
+.metric-label { font-size: .77rem; font-weight: 750; letter-spacing: .06em; text-transform: uppercase; }
+.metric-card strong { display: block; margin: 12px 0 5px; font-family: "Atkinson Hyperlegible Mono Variable", monospace; font-size: 2rem; line-height: 1; letter-spacing: -.08em; }
+.metric-card small { max-width: 90%; font-size: .78rem; line-height: 1.35; }
+.signal-summary { display: flex; align-items: center; justify-content: space-between; gap: 22px; margin-top: 12px; padding: 15px 18px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+.signal-summary-label, .signal-summary-note { display: block; }
+.signal-summary-label { font-size: .9rem; font-weight: 750; }
+.signal-summary-note { margin-top: 3px; color: var(--muted); font-size: .78rem; }
+.signal-bars { display: flex; align-items: end; gap: 15px; min-height: 57px; }
+.signal-bar { display: grid; grid-template-columns: 30px; grid-template-rows: 29px 17px; justify-items: center; gap: 3px; min-width: 56px; }
+.signal-bar > span { display: block; align-self: end; width: 100%; min-height: 8px; border-radius: 4px 4px 2px 2px; opacity: .8; }
+.signal-bar > strong { font-family: "Atkinson Hyperlegible Mono Variable", monospace; font-size: .76rem; }
+.signal-bar > small { grid-column: 1; color: var(--muted); font-size: .64rem; text-align: center; white-space: nowrap; }
+.signal-bar-level-normal > span { background: var(--normal); }
+.signal-bar-level-slightly-unusual > span { background: var(--slight); }
+.signal-bar-level-unusual > span { background: var(--unusual); }
+.signal-bar-level-very-unusual > span { background: var(--very); }
 .pagination { display: flex; align-items: center; justify-content: center; gap: 17px; padding: 15px 20px 18px; border-top: 1px solid var(--line); }
 .pagination span { color: var(--muted); font-size: .88rem; }
 .comparison-link { border: 0; padding: 4px 2px; background: transparent; color: var(--accent); cursor: pointer; font-family: "Atkinson Hyperlegible Mono Variable", monospace; font-size: .83rem; font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
@@ -266,6 +293,13 @@ tbody tr:hover { background: color-mix(in srgb, var(--accent) 4%, var(--surface)
   .status-strip { flex-wrap: wrap; gap: 12px 22px; }
   .status-checked { width: 100%; margin-left: 0; justify-content: space-between; }
   .latest-card { padding: 20px; }
+  .overview-heading { padding: 0 0 13px; }
+  .overview-heading .overview-caption { text-align: left; }
+  .overview-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .metric-card { min-height: 116px; padding: 15px 13px; }
+  .metric-card strong { font-size: 1.7rem; }
+  .signal-summary { align-items: flex-start; flex-direction: column; gap: 15px; }
+  .signal-bars { width: 100%; justify-content: space-between; }
   .section-heading { padding: 0 18px 16px; align-items: flex-start; flex-direction: column; }
   .history-count { text-align: left; }
   .history-section, .baselines-section { margin-left: -2px; margin-right: -2px; }

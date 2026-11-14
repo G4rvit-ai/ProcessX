@@ -87,6 +87,70 @@ export function LatestComparison({ comparison }) {
   );
 }
 
+export function DashboardOverview({ health, baselines, totalComparisons, latest, recentComparisons }) {
+  const scores = recentComparisons.filter((item) => Number.isFinite(Number(item.score)));
+  const outsideRange = recentComparisons.reduce((total, item) => total + (Number(item.outside_range) || 0), 0);
+  const featureCount = baselines?.baselines?.reduce((total, baseline) => total + (Number(baseline.feature_count) || 0), 0) ?? 0;
+  const levels = [
+    ["normal", "Normal"],
+    ["slightly unusual", "Slightly unusual"],
+    ["unusual", "Unusual"],
+    ["very unusual", "Very unusual"],
+  ];
+
+  return (
+    <section className="overview-section" aria-labelledby="overview-title">
+      <div className="section-heading overview-heading">
+        <div>
+          <p className="eyebrow">Operational overview</p>
+          <h2 id="overview-title">Your analysis at a glance</h2>
+        </div>
+        <p className="overview-caption">Live data from this ProcessX server</p>
+      </div>
+      <div className="overview-grid">
+        <article className="metric-card metric-card-accent">
+          <span className="metric-label">Saved comparisons</span>
+          <strong>{totalComparisons ?? "—"}</strong>
+          <small>runs in history</small>
+        </article>
+        <article className="metric-card">
+          <span className="metric-label">Baseline coverage</span>
+          <strong>{baselines?.count ?? "—"}</strong>
+          <small>{featureCount ? `${featureCount} tracked features` : "profiles available"}</small>
+        </article>
+        <article className={`metric-card ${latest ? `metric-card-${levelClass(latest.level)}` : ""}`}>
+          <span className="metric-label">Latest signal</span>
+          <strong>{latest ? latest.score : "—"}</strong>
+          <small>{latest ? formatLevel(latest.level) : "no comparison yet"}</small>
+        </article>
+        <article className="metric-card">
+          <span className="metric-label">Recent differences</span>
+          <strong>{scores.length ? outsideRange : "—"}</strong>
+          <small>{scores.length ? `outside-range features in ${scores.length} loaded run${scores.length === 1 ? "" : "s"}` : "run a comparison to see signals"}</small>
+        </article>
+      </div>
+      <div className="signal-summary">
+        <div>
+          <span className="signal-summary-label">Recent score distribution</span>
+          <span className="signal-summary-note">{health?.strace ? "Tracing ready" : "Tracing unavailable"}</span>
+        </div>
+        <div className="signal-bars" aria-label="Recent score distribution">
+          {levels.map(([level, label]) => {
+            const count = recentComparisons.filter((item) => item.level === level).length;
+            return (
+              <div className={`signal-bar signal-bar-${levelClass(level)}`} key={level} title={`${label}: ${count}`}>
+                <span style={{ height: `${count ? Math.max(18, Math.min(100, count * 18)) : 8}%` }} />
+                <strong>{count}</strong>
+                <small>{label}</small>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export function BaselinesPanel({
   baselines, error, selectedName, detail, detailError, detailLoading, onSelect,
   onRun, runningBaseline, runFeedback,

@@ -28,6 +28,24 @@ test("status strip includes backend state and refresh action", () => {
   assert.match(html, /Refresh/);
 });
 
+test("overview shows saved comparison and signal metrics", () => {
+  const html = renderToStaticMarkup(React.createElement(components.DashboardOverview, {
+    health: { strace: true },
+    baselines: { count: 2, baselines: [{ feature_count: 12 }, { feature_count: 8 }] },
+    totalComparisons: 7,
+    latest: { score: 18, level: "unusual" },
+    recentComparisons: [
+      { score: 18, level: "unusual", outside_range: 3 },
+      { score: 0, level: "normal", outside_range: 0 },
+    ],
+  }));
+  assert.match(html, /Your analysis at a glance/);
+  assert.match(html, />7</);
+  assert.match(html, /20 tracked features/);
+  assert.match(html, /3<\/strong>/);
+  assert.match(html, /Unusual/);
+});
+
 test("history renders the newest rows, counts and score labels accessibly", () => {
   const html = renderToStaticMarkup(React.createElement(components.HistoryTable, {
     total: 37,
