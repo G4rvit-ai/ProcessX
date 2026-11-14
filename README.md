@@ -166,6 +166,7 @@ For normal use, prefer `./start_processx.sh` above.
     bash check_phase5.sh       # dashboard unit tests and production build
     bash check_phase6.sh       # starts the integrated app and checks dashboard/API/Host behavior
     bash check_python.sh       # focused Python unit tests for parser, scoring and database
+    bash evaluate.sh           # rebuilds 40-run baselines and evaluates normal/odd variants
 
 ## What is in a feature record
 Call counts, call categories (file, process, memory, network, signal), how many sockets were

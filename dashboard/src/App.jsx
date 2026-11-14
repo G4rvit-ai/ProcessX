@@ -195,7 +195,7 @@ function App() {
   return (
     <main className="page-shell">
       <header className="topbar">
-        <a className="brand" href="/" aria-label="ProcessX dashboard home">
+        <a className="brand" href="/" aria-label="ProcessX">
           <span className="brand-mark" aria-hidden="true">PX</span>
           <span>Process<span className="brand-x">X</span></span>
         </a>
